@@ -24,7 +24,12 @@ except ImportError as e:
     print(f"Error: rich is required. Install: pip install rich\n{e}")
     sys.exit(1)
 
-BASE_DIR = Path(__file__).resolve().parent
+try:
+    BASE_DIR = Path(__file__).resolve().parent
+except NameError:
+    BASE_DIR = Path("/opt/PocketSET")
+    if not BASE_DIR.exists():
+        BASE_DIR = Path.cwd()
 SCHEMA_PATH = BASE_DIR / "schema.json"
 POCKETSET_DIR = Path.home() / ".pocketset"
 LOGS_DIR = POCKETSET_DIR / "logs"
@@ -292,13 +297,27 @@ class Disclaimer:
 
 class DependencyChecker:
     @staticmethod
+    def find_setoolkit() -> str:
+        candidates = [
+            "setoolkit",
+            "seautomate",
+            "./setoolkit",
+            "/usr/local/share/setoolkit/setoolkit",
+            "/usr/local/bin/setoolkit",
+            "/opt/setoolkit/setoolkit",
+        ]
+        for c in candidates:
+            r = subprocess.run(["which", c] if "/" not in c else (["test", "-x", c],),
+                              capture_output=True, text=True)
+            if r.returncode == 0:
+                return c
+            if "/" in c and Path(c).exists():
+                return c
+        return ""
+
+    @staticmethod
     def check_setoolkit() -> bool:
-        r = subprocess.run(["which", "setoolkit"], capture_output=True, text=True)
-        if r.returncode != 0:
-            r2 = subprocess.run(["which", "seautomate"], capture_output=True, text=True)
-            if r2.returncode != 0:
-                return False
-        return True
+        return bool(DependencyChecker.find_setoolkit())
 
     @staticmethod
     def check_metasploit() -> bool:
@@ -427,19 +446,35 @@ class SETExecutor:
         self.script_path = script_path
         self.timeout = timeout
         self.output_lines = []
+        self.setoolkit_cmd = DependencyChecker.find_setoolkit() or "setoolkit"
 
     def _run_pexpect(self):
         import pexpect
+        import pexpect.exceptions as pexcp
         output = []
+        setoolkit_cmd = self.setoolkit_cmd
+        if "/" not in setoolkit_cmd and not setoolkit_cmd.startswith("./"):
+            r = subprocess.run(["which", setoolkit_cmd], capture_output=True, text=True)
+            if r.returncode == 0:
+                setoolkit_cmd = r.stdout.strip()
         child = pexpect.spawn(
-            "setoolkit",
+            setoolkit_cmd,
             timeout=self.timeout,
             encoding="utf-8",
             codec_errors="replace",
             env={**os.environ, "TERM": "xterm-256color", "POCKETSET": "1"}
         )
-        # Wait for menu to load
-        child.expect(r"99\) Exit the Social-Engineer Toolkit", timeout=60)
+        # Wait for menu to load (proot may be slow - longer timeout)
+        try:
+            child.expect(r"99\) Exit the Social-Engineer Toolkit", timeout=120)
+        except pexcp.TIMEOUT:
+            output.append("[!] Initial menu load timed out (proot/termux may be slow)")
+            child.close()
+            return "\n".join(output)
+        except pexcp.EOF:
+            output.append("[!] SET exited before menu loaded")
+            child.close()
+            return "\n".join(output)
         output.append(child.before or "")
         # Send automate lines
         script_text = self.script_path.read_text()
@@ -449,31 +484,26 @@ class SETExecutor:
             else:
                 child.sendline(line.strip())
             import time as _time
-            _time.sleep(0.3)
+            _time.sleep(0.5)
             try:
                 idx = child.expect([
                     r"99\) Exit the Social-Engineer Toolkit",
                     r"99\) Return back to the main menu",
-                    pexpect.EOF,
-                    pexpect.TIMEOUT,
-                ], timeout=10)
+                    pexcp.EOF,
+                    pexcp.TIMEOUT,
+                ], timeout=15)
                 before = child.before or ""
                 after = child.after or ""
                 chunk = before + (str(after) if isinstance(after, str) else "")
                 if chunk:
                     output.append(chunk)
                     self.output_lines.append(chunk)
-                if idx < 2:
-                    pass
-                if idx == 1:
-                    # Returned to submenu - continue
-                    pass
                 if idx == 2:
                     break
-            except pexpect.EOF:
+            except pexcp.EOF:
                 break
         try:
-            child.expect(pexpect.EOF, timeout=60)
+            child.expect(pexcp.EOF, timeout=120)
             output.append(child.before or "")
         except: pass
         child.close()
@@ -481,8 +511,9 @@ class SETExecutor:
 
     def _run_subprocess(self):
         script_text = self.script_path.read_text()
+        setoolkit_cmd = self.setoolkit_cmd
         proc = subprocess.Popen(
-            ["setoolkit"],
+            setoolkit_cmd if "/" in setoolkit_cmd else [setoolkit_cmd],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -969,7 +1000,8 @@ def main():
     _ensure_dirs()
     if not Disclaimer.show():
         sys.exit(1)
-    if not DependencyChecker.check_setoolkit():
+    setoolkit_path = DependencyChecker.find_setoolkit()
+    if not setoolkit_path:
         show_error("SET Not Found", "Social-Engineer Toolkit is not installed.\n\nInstall with:\n  git clone https://github.com/trustedsec/social-engineer-toolkit\n  cd social-engineer-toolkit && pip install -e .\n\nThen run: pocketset")
         if prompt_confirm("Open the SET GitHub page for install instructions?", False):
             import webbrowser
@@ -989,7 +1021,8 @@ def main():
         main_opts = MENU_TREE["main_menu"]
         display_opts = {k: v["label"] if isinstance(v, dict) else v for k, v in main_opts.items()}
         display_opts["99"] = "Exit PocketSET"
-        show_info(f"Metasploit: {'[green]Available[/]' if has_msf else '[yellow]Not Found[/]'}  |  SET: [green]Installed[/]")
+        set_path_short = setoolkit_path if len(setoolkit_path) < 40 else "..." + setoolkit_path[-36:]
+        show_info(f"SET: [green]{set_path_short}[/]  |  Metasploit: {'[green]Available[/]' if has_msf else '[yellow]Not Found[/]'}")
         show_rule()
         choice = prompt_choice("Main Menu", display_opts)
         if choice == "99":

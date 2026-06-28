@@ -22,22 +22,43 @@ PocketSET provides a beginner-friendly terminal user interface for SET. No termi
 - **setoolkit** (Social-Engineer Toolkit) — installed automatically on Debian/Kali
 - **Debian trixie** / Kali Linux / Ubuntu (other distros may work)
 
-## Quick Install
+## Quick Install (One Command)
 
+### Option 1 — curl (recommended)
 ```bash
-git clone https://github.com/highoncomputers/PocketSET.git
-cd PocketSET
-chmod +x install.sh && ./install.sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/highoncomputers/PocketSET/main/install.sh)"
 pocketset
 ```
 
-Or manually:
+### Option 2 — git clone
+```bash
+git clone https://github.com/highoncomputers/PocketSET.git && cd PocketSET && bash install.sh && pocketset
+```
 
+### Option 3 — manual
 ```bash
 pip install rich pexpect Pillow qrcode
 chmod +x wrapper.py
-sudo ln -sf "$(pwd)/wrapper.py" /usr/local/bin/pocketset
+ln -sf "$(pwd)/wrapper.py" /usr/local/bin/pocketset
 pocketset
+```
+
+### For Termux / Proot (Debian trixie)
+
+Termux proot runs as root with no `sudo`. The install script auto-detects this:
+
+```bash
+pkg install git curl -y
+git clone https://github.com/highoncomputers/PocketSET.git
+cd PocketSET
+bash install.sh
+source ~/.bashrc
+pocketset
+```
+
+Or one-liner:
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/highoncomputers/PocketSET/main/install.sh)" && source ~/.bashrc && pocketset
 ```
 
 ## Usage
