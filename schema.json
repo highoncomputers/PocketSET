@@ -1,0 +1,272 @@
+{
+  "tool": "setoolkit",
+  "name": "Social-Engineer Toolkit",
+  "version": "8.1.3",
+  "description": "Penetration testing framework for authorized social-engineering assessments",
+  "menu_tree": {
+    "main_menu": {
+      "1": {
+        "label": "Social-Engineering Attacks",
+        "submenu": "social_engineering"
+      },
+      "2": {
+        "label": "Penetration Testing (Fast-Track)",
+        "submenu": "fasttrack"
+      },
+      "3": {
+        "label": "Third Party Modules",
+        "submenu": "third_party"
+      },
+      "4": {
+        "label": "Update the Social-Engineer Toolkit"
+      },
+      "5": {
+        "label": "Update SET configuration"
+      },
+      "6": {
+        "label": "Help, Credits, and About"
+      }
+    },
+    "social_engineering": {
+      "1": {
+        "label": "Spear-Phishing Attack Vectors",
+        "submenu": "spearphish",
+        "params": ["lhost", "lport"],
+        "requires_msf": true
+      },
+      "2": {
+        "label": "Website Attack Vectors",
+        "submenu": "website_attack",
+        "params": ["lhost", "lport", "url", "ssl"],
+        "requires_msf": true
+      },
+      "3": {
+        "label": "Infectious Media Generator",
+        "params": ["lhost", "lport"],
+        "requires_msf": true
+      },
+      "4": {
+        "label": "Create a Payload and Listener",
+        "params": ["lhost", "lport", "payload_type", "meterpreter_payload", "encoding"],
+        "requires_msf": true
+      },
+      "5": {
+        "label": "Mass Mailer Attack",
+        "params": ["smtp_server", "from_email", "to_emails", "subject", "body", "email_list_file"]
+      },
+      "6": {
+        "label": "Arduino-Based Attack Vector",
+        "submenu": "teensy",
+        "params": ["lhost", "lport"]
+      },
+      "7": {
+        "label": "Wireless Access Point Attack Vector",
+        "submenu": "wireless",
+        "params": ["ssid", "channel", "interface", "dhcp_range"]
+      },
+      "8": {
+        "label": "QRCode Generator Attack Vector",
+        "params": ["qr_url"]
+      },
+      "9": {
+        "label": "Powershell Attack Vectors",
+        "submenu": "powershell",
+        "params": ["lhost", "lport"]
+      },
+      "10": {
+        "label": "Third Party Modules"
+      }
+    },
+    "website_attack": {
+      "attack_methods": {
+        "1": "Java Applet Attack Method",
+        "2": "Metasploit Browser Exploit Method",
+        "3": "Credential Harvester Attack Method",
+        "4": "Tabnabbing Attack Method",
+        "5": "Web Jacking Attack Method",
+        "6": "Multi-Attack Web Method",
+        "7": "HTA Attack Method"
+      },
+      "web_sources": {
+        "1": "Web Templates",
+        "2": "Site Cloner",
+        "3": "Custom Import"
+      }
+    },
+    "spearphish": {
+      "options": {
+        "1": "Perform a Mass Email Attack",
+        "2": "Create a FileFormat Payload",
+        "3": "Create a Social-Engineering Template"
+      }
+    },
+    "teensy": {
+      "1": "PowerShell HTTP GET MSF Payload",
+      "2": "WSCRIPT HTTP GET MSF Payload",
+      "3": "PowerShell based Reverse Shell Payload",
+      "4": "Internet Explorer/FireFox Beef Jack Payload",
+      "5": "Go to malicious java site and accept applet Payload",
+      "6": "Gnome wget Download Payload",
+      "7": "Binary 2 Teensy Attack (Deploy MSF payloads)",
+      "8": "SDCard 2 Teensy Attack (Deploy Any EXE)",
+      "9": "SDCard 2 Teensy Attack (Deploy on OSX)",
+      "10": "X10 Arduino Sniffer PDE and Libraries",
+      "11": "X10 Arduino Jammer PDE and Libraries",
+      "12": "PowerShell Direct ShellCode Teensy Attack",
+      "13": "Peensy Multi Attack Dip Switch + SDCard Attack",
+      "14": "HID Msbuild compile to memory Shellcode Attack"
+    },
+    "wireless": {
+      "1": "Start the SET Wireless Attack Vector Access Point",
+      "2": "Stop the SET Wireless Attack Vector Access Point"
+    },
+    "powershell": {
+      "1": "Powershell Alphanumeric Shellcode Injector",
+      "2": "Powershell Reverse Shell",
+      "3": "Powershell Bind Shell",
+      "4": "Powershell Dump SAM Database"
+    },
+    "fasttrack": {
+      "1": {
+        "label": "Microsoft SQL Bruter",
+        "submenu": "mssql",
+        "params": ["target", "port", "username", "wordlist"]
+      },
+      "2": {
+        "label": "Custom Exploits",
+        "submenu": "exploits",
+        "params": ["target", "port"]
+      },
+      "3": {
+        "label": "SCCM Attack Vector",
+        "params": ["target"]
+      },
+      "4": {
+        "label": "Dell DRAC/Chassis Default Checker",
+        "params": ["target"]
+      },
+      "5": {
+        "label": "RID_ENUM - User Enumeration Attack",
+        "params": ["target"]
+      },
+      "6": {
+        "label": "PSEXEC Powershell Injection",
+        "params": ["target", "username", "password"]
+      }
+    },
+    "mssql": {
+      "1": {
+        "label": "Scan and Attack MSSQL",
+        "params": ["target_cidr", "port", "username", "wordlist"]
+      },
+      "2": {
+        "label": "Connect directly to MSSQL",
+        "params": ["target", "port", "username", "password"]
+      }
+    },
+    "exploits": {
+      "1": "MS08-067 (Win2000, Win2k3, WinXP)",
+      "2": "Mozilla Firefox 3.6.16 mChannel Object Use After Free Exploit (Win7)",
+      "3": "Solarwinds Storage Manager 5.1.0 Remote SYSTEM SQL Injection Exploit",
+      "4": "RDP | Use after Free - Denial of Service",
+      "5": "MySQL Authentication Bypass Exploit",
+      "6": "F5 Root Authentication Bypass Exploit"
+    }
+  },
+  "payloads": {
+    "payload_menu_1": {
+      "1": "Meterpreter Memory Injection (DEFAULT)",
+      "2": "Meterpreter Multi-Memory Injection",
+      "3": "SE Toolkit Interactive Shell",
+      "4": "SE Toolkit HTTP Reverse Shell",
+      "5": "RATTE HTTP Tunneling Payload",
+      "6": "ShellCodeExec Alphanum Shellcode",
+      "7": "Import your own executable",
+      "8": "Import your own commands.txt"
+    },
+    "payload_menu_2": {
+      "1": "Windows Shell Reverse_TCP",
+      "2": "Windows Reverse_TCP Meterpreter",
+      "3": "Windows Reverse_TCP VNC DLL",
+      "4": "Windows Shell Reverse_TCP X64",
+      "5": "Windows Meterpreter Reverse_TCP X64",
+      "6": "Windows Meterpreter Egress Buster",
+      "7": "Windows Meterpreter Reverse HTTPS",
+      "8": "Windows Meterpreter Reverse DNS",
+      "9": "Download/Run your Own Executable"
+    },
+    "fileformat_exploits": {
+      "1": "SET Custom Written DLL Hijacking Attack Vector (RAR, ZIP)",
+      "2": "SET Custom Written Document UNC LM SMB Capture Attack",
+      "3": "MS15-100 Microsoft Windows Media Center MCL Vulnerability",
+      "4": "MS14-017 Microsoft Word RTF Object Confusion",
+      "5": "Microsoft Windows CreateSizedDIBSECTION Stack Buffer Overflow",
+      "6": "Microsoft Word RTF pFragments Stack Buffer Overflow (MS10-087)",
+      "7": "Adobe Flash Player Button Remote Code Execution",
+      "8": "Adobe CoolType SING Table uniqueName Overflow",
+      "9": "Adobe Flash Player newfunction Invalid Pointer Use",
+      "10": "Adobe Collab.collectEmailInfo Buffer Overflow",
+      "11": "Adobe Collab.getIcon Buffer Overflow",
+      "12": "Adobe JBIG2Decode Memory Corruption Exploit",
+      "13": "Adobe PDF Embedded EXE Social Engineering",
+      "14": "Adobe util.printf() Buffer Overflow",
+      "15": "Custom EXE to VBA (sent via RAR)",
+      "16": "Adobe U3D CLODProgressiveMeshDeclaration Array Overrun",
+      "17": "Adobe PDF Embedded EXE Social Engineering (NOJS)",
+      "18": "Foxit PDF Reader v4.1.1 Title Stack Buffer Overflow",
+      "19": "Apple QuickTime PICT PnSize Buffer Overflow",
+      "20": "Nuance PDF Reader v6.0 Launch Stack Buffer Overflow",
+      "21": "Adobe Reader u3D Memory Corruption Vulnerability",
+      "22": "MSCOMCTL ActiveX Buffer Overflow (ms12-027)"
+    },
+    "encoders": {
+      "1": "shikata_ga_nai",
+      "2": "No Encoding",
+      "3": "Multi-Encoder",
+      "4": "Backdoored Executable"
+    },
+    "browser_exploits": {
+      "1": "Adobe Flash Player ByteArray Use After Free (2015-07-06)",
+      "2": "Adobe Flash Player Nellymoser Audio Decoding Buffer Overflow (2015-06-23)",
+      "3": "Adobe Flash Player Drawing Fill Shader Memory Corruption (2015-05-12)",
+      "4": "MS14-012 Microsoft IE TextRange Use-After-Free (2014-03-11)",
+      "5": "MS14-012 Microsoft IE CMarkup Use-After-Free (2014-02-13)",
+      "6": "Internet Explorer CDisplayPointer Use-After-Free (10/13/2013)",
+      "7": "Microsoft IE SetMouseCapture Use-After-Free (09/17/2013)",
+      "8": "Java Applet JMX Remote Code Execution (UPDATED 2013-01-19)",
+      "9": "Java Applet JMX Remote Code Execution (2013-01-10)",
+      "10": "MS13-009 Microsoft IE SLayoutRun Use-After-Free (2013-02-13)",
+      "11": "Microsoft IE CDwnBindInfo Object Use-After-Free (2012-12-27)",
+      "12": "Java 7 Applet Remote Code Execution (2012-08-26)",
+      "13": "Microsoft IE execCommand Use-After-Free (2012-09-14)",
+      "14": "Java AtomicReferenceArray Type Violation (2012-02-14)",
+      "15": "Java Applet Field Bytecode Verifier Cache RCE (2012-06-06)",
+      "16": "MS12-037 IE Same ID Property Deleted Object Memory Corruption (2012-06-12)",
+      "17": "Microsoft XML Core Services MSXML Uninitialized Memory Corruption (2012-06-12)",
+      "18": "Adobe Flash Player Object Type Confusion (2012-05-04)",
+      "19": "Adobe Flash Player MP4 cprt Overflow (2012-02-15)",
+      "20": "MS12-004 midiOutPlayNextPolyEvent Heap Overflow (2012-01-10)",
+      "21": "Java Applet Rhino Script Engine Remote Code Execution (2011-10-18)",
+      "22": "MS11-050 IE mshtml CObjectElement Use After Free (2011-06-16)",
+      "23": "Adobe Flash Player 10.2.153.1 SWF Memory Corruption (2011-04-11)",
+      "24": "Cisco AnyConnect VPN Client ActiveX URL Property Download & Execute (2011-06-01)",
+      "25": "Internet Explorer CSS Import Use After Free (2010-11-29)",
+      "26": "Microsoft WMI Administration Tools ActiveX Buffer Overflow (2010-12-21)",
+      "27": "Internet Explorer CSS Tags Memory Corruption (2010-11-03)",
+      "28": "Sun Java Applet2ClassLoader Remote Code Execution (2011-02-15)",
+      "29": "Sun Java Runtime New Plugin docbase Buffer Overflow (2010-10-12)",
+      "30": "Microsoft Windows WebDAV Application DLL Hijacker (2010-08-18)",
+      "31": "Adobe Flash Player AVM Bytecode Verification Vulnerability (2011-03-15)",
+      "32": "Adobe Shockwave rcsL Memory Corruption Exploit (2010-10-21)",
+      "33": "Adobe CoolType SING Table uniqueName Stack Buffer Overflow (2010-09-07)",
+      "34": "Apple QuickTime 7.6.7 Marshaled_pUnk Code Execution (2010-08-30)",
+      "35": "Microsoft Help Center XSS and Command Execution (2010-06-09)",
+      "36": "Microsoft IE iepeers.dll Use After Free (2010-03-09)",
+      "37": "Microsoft Internet Explorer Aurora Memory Corruption (2010-01-14)",
+      "38": "Microsoft Internet Explorer Tabular Data Control Exploit (2010-03-0)",
+      "39": "FireFox 3.5 escape Return Value Memory Corruption (2009-07-13)",
+      "40": "FireFox 3.6.16 mChannel use after free (2011-05-10)",
+      "41": "Metasploit Browser Autopwn (USE AT OWN RISK!)"
+    }
+  }
+}

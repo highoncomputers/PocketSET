@@ -1,0 +1,131 @@
+{
+  "theme": {
+    "primary": "cyan",
+    "secondary": "blue",
+    "success": "green",
+    "error": "red",
+    "warning": "yellow",
+    "info": "white",
+    "border_style": "cyan",
+    "header_style": "bold cyan",
+    "label_style": "bold white"
+  },
+  "components": {
+    "disclaimer": {
+      "type": "panel",
+      "title": "LEGAL DISCLAIMER",
+      "border_style": "red",
+      "width": 80,
+      "align": "center"
+    },
+    "main_menu": {
+      "type": "menu",
+      "title": "PocketSET v1.0",
+      "subtitle": "Social-Engineer Toolkit — Interactive TUI",
+      "items_per_page": 10,
+      "show_back": false
+    },
+    "social_engineering_menu": {
+      "type": "menu",
+      "title": "Social-Engineering Attacks",
+      "items_per_page": 10,
+      "show_back": true
+    },
+    "fasttrack_menu": {
+      "type": "menu",
+      "title": "Fast-Track Penetration Testing",
+      "items_per_page": 10,
+      "show_back": true
+    },
+    "attack_method_selector": {
+      "type": "radio_group",
+      "title": "Select Attack Method",
+      "columns": 1
+    },
+    "web_source_selector": {
+      "type": "radio_group",
+      "title": "Select Web Source",
+      "columns": 1
+    },
+    "param_form": {
+      "type": "form",
+      "title": "Attack Parameters",
+      "show_labels": true,
+      "validate_on_submit": true
+    },
+    "confirm_panel": {
+      "type": "panel",
+      "title": "Confirm Attack",
+      "border_style": "yellow",
+      "show_command": true
+    },
+    "execution_panel": {
+      "type": "live_panel",
+      "title": "SET Execution - Live Output",
+      "show_timestamp": true,
+      "auto_scroll": true,
+      "max_lines": 1000
+    },
+    "result_panel": {
+      "type": "panel",
+      "title": "Execution Result",
+      "border_style": "green"
+    },
+    "error_panel": {
+      "type": "panel",
+      "title": "Error",
+      "border_style": "red"
+    },
+    "payload_selector": {
+      "type": "radio_group",
+      "title": "Select Payload Type",
+      "columns": 1
+    },
+    "meterpreter_selector": {
+      "type": "radio_group",
+      "title": "Select Meterpreter Payload",
+      "columns": 1
+    },
+    "encoder_selector": {
+      "type": "radio_group",
+      "title": "Select Encoding Method",
+      "columns": 2
+    },
+    "fileformat_selector": {
+      "type": "radio_group",
+      "title": "Select FileFormat Exploit",
+      "columns": 1
+    },
+    "browser_exploit_selector": {
+      "type": "radio_group",
+      "title": "Select Browser Exploit",
+      "columns": 1,
+      "page_size": 10
+    },
+    "teensy_selector": {
+      "type": "radio_group",
+      "title": "Select Teensy Attack",
+      "columns": 1
+    },
+    "powershell_selector": {
+      "type": "radio_group",
+      "title": "Select PowerShell Attack",
+      "columns": 1
+    },
+    "wireless_selector": {
+      "type": "radio_group",
+      "title": "Wireless Access Point",
+      "columns": 1
+    },
+    "exploit_selector": {
+      "type": "radio_group",
+      "title": "Select Exploit",
+      "columns": 1
+    },
+    "mssql_selector": {
+      "type": "radio_group",
+      "title": "MSSQL Attack Mode",
+      "columns": 1
+    }
+  }
+}

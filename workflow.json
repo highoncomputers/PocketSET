@@ -1,0 +1,130 @@
+{
+  "workflows": {
+    "spearphish": {
+      "type": "wizard",
+      "steps": [
+        {"title": "Spear-Phishing Attack", "description": "Craft email messages with malicious payloads"},
+        {"prompt": "attack_type", "component": "radio_group", "options": ["Perform a Mass Email Attack", "Create a FileFormat Payload", "Create a Social-Engineering Template"]},
+        {"prompt": "lhost", "component": "text", "if": "attack_type == 1 or attack_type == 2"},
+        {"prompt": "lport", "component": "text", "default": "443", "if": "attack_type == 1 or attack_type == 2"},
+        {"prompt": "fileformat", "component": "radio_group", "if": "attack_type == 1 or attack_type == 2"},
+        {"prompt": "confirm", "component": "confirm"}
+      ]
+    },
+    "website_attack": {
+      "type": "wizard",
+      "steps": [
+        {"title": "Website Attack Vectors", "description": "Web-based attacks using cloned sites"},
+        {"prompt": "attack_method", "component": "radio_group", "options_key": "attack_methods"},
+        {"prompt": "web_source", "component": "radio_group", "options_key": "web_sources"},
+        {"prompt": "url", "component": "text", "if": "web_source == 2"},
+        {"prompt": "import_path", "component": "text", "if": "web_source == 3"},
+        {"prompt": "lhost", "component": "text"},
+        {"prompt": "lport", "component": "text", "default": "80"},
+        {"prompt": "ssl", "component": "confirm", "default": false},
+        {"prompt": "nat", "component": "confirm", "default": false},
+        {"prompt": "external_ip", "component": "text", "if": "nat == true"},
+        {"prompt": "confirm", "component": "confirm"}
+      ]
+    },
+    "infectious_media": {
+      "type": "wizard",
+      "steps": [
+        {"title": "Infectious Media Generator", "description": "Create USB/CD autorun with malicious payload"},
+        {"prompt": "media_type", "component": "radio_group", "options": ["File-Format Exploits", "Standard Metasploit Executable"]},
+        {"prompt": "lhost", "component": "text"},
+        {"prompt": "lport", "component": "text", "default": "443"},
+        {"prompt": "confirm", "component": "confirm"}
+      ]
+    },
+    "payload_listener": {
+      "type": "wizard",
+      "steps": [
+        {"title": "Create a Payload and Listener", "description": "Generate standalone Metasploit payloads"},
+        {"prompt": "payload_type", "component": "radio_group", "options_key": "payload_types"},
+        {"prompt": "meterpreter_payload", "component": "radio_group", "options_key": "meterpreter_payloads"},
+        {"prompt": "lhost", "component": "text"},
+        {"prompt": "lport", "component": "text", "default": "443"},
+        {"prompt": "encoding", "component": "radio_group", "options_key": "encoders"},
+        {"prompt": "confirm", "component": "confirm"}
+      ]
+    },
+    "mass_mailer": {
+      "type": "wizard",
+      "steps": [
+        {"title": "Mass Mailer Attack", "description": "Send bulk emails via SMTP"},
+        {"prompt": "smtp_server", "component": "text"},
+        {"prompt": "from_email", "component": "text"},
+        {"prompt": "to_emails", "component": "text"},
+        {"prompt": "subject", "component": "text"},
+        {"prompt": "body", "component": "multiline"},
+        {"prompt": "email_list_file", "component": "text", "optional": true},
+        {"prompt": "confirm", "component": "confirm"}
+      ]
+    },
+    "teensy": {
+      "type": "wizard",
+      "steps": [
+        {"title": "Arduino-Based Attack Vector", "description": "Program Teensy USB devices for HID attacks"},
+        {"prompt": "teensy_type", "component": "radio_group", "options_key": "teensy"},
+        {"prompt": "lhost", "component": "text", "if": "teensy_type in [1,2,3,4,5,6,12,14]"},
+        {"prompt": "lport", "component": "text", "default": "443", "if": "teensy_type in [1,2,3,4,5,6,12,14]"},
+        {"prompt": "confirm", "component": "confirm"}
+      ]
+    },
+    "wireless": {
+      "type": "wizard",
+      "steps": [
+        {"title": "Wireless Access Point Attack Vector", "description": "Create rogue AP with DNS spoofing"},
+        {"prompt": "wireless_action", "component": "radio_group", "options": ["Start Access Point", "Stop Access Point"]},
+        {"prompt": "ssid", "component": "text", "default": "Free WiFi", "if": "wireless_action == 1"},
+        {"prompt": "channel", "component": "text", "default": "6", "if": "wireless_action == 1"},
+        {"prompt": "interface", "component": "text", "default": "wlan0", "if": "wireless_action == 1"},
+        {"prompt": "dhcp_range", "component": "radio_group", "if": "wireless_action == 1"},
+        {"prompt": "confirm", "component": "confirm"}
+      ]
+    },
+    "qrcode": {
+      "type": "wizard",
+      "steps": [
+        {"title": "QRCode Generator", "description": "Generate QR codes with malicious URLs"},
+        {"prompt": "qr_url", "component": "text"},
+        {"prompt": "confirm", "component": "confirm"}
+      ]
+    },
+    "powershell": {
+      "type": "wizard",
+      "steps": [
+        {"title": "PowerShell Attack Vectors", "description": "Create PowerShell-based attacks"},
+        {"prompt": "ps_type", "component": "radio_group", "options_key": "powershell"},
+        {"prompt": "lhost", "component": "text", "if": "ps_type in [1,2,3]"},
+        {"prompt": "lport", "component": "text", "default": "443", "if": "ps_type in [1,2,3]"},
+        {"prompt": "confirm", "component": "confirm"}
+      ]
+    },
+    "fasttrack_mssql": {
+      "type": "wizard",
+      "steps": [
+        {"title": "Microsoft SQL Bruter", "description": "Brute force MSSQL servers"},
+        {"prompt": "mssql_mode", "component": "radio_group", "options": ["Scan and Attack MSSQL", "Connect directly to MSSQL"]},
+        {"prompt": "target_cidr", "component": "text", "if": "mssql_mode == 1"},
+        {"prompt": "target", "component": "text", "if": "mssql_mode == 2"},
+        {"prompt": "port", "component": "text", "default": "1433"},
+        {"prompt": "username", "component": "text", "default": "sa"},
+        {"prompt": "wordlist", "component": "text", "optional": true, "if": "mssql_mode == 1"},
+        {"prompt": "password", "component": "password", "if": "mssql_mode == 2"},
+        {"prompt": "confirm", "component": "confirm"}
+      ]
+    },
+    "fasttrack_exploits": {
+      "type": "wizard",
+      "steps": [
+        {"title": "Custom Exploits", "description": "Launch python-based exploits"},
+        {"prompt": "exploit_type", "component": "radio_group", "options_key": "exploits"},
+        {"prompt": "target", "component": "text"},
+        {"prompt": "port", "component": "text", "default": "445"},
+        {"prompt": "confirm", "component": "confirm"}
+      ]
+    }
+  }
+}

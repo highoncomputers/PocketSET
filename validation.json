@@ -1,0 +1,326 @@
+{
+  "lhost": {
+    "type": "ip",
+    "label": "LHOST (IP address)",
+    "required": true,
+    "validation": {
+      "pattern": "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$",
+      "min_length": 7,
+      "max_length": 15,
+      "custom": "validate_ip"
+    },
+    "error_message": "Invalid IP address. Enter a valid IPv4 address (e.g. 192.168.1.100)",
+    "description": "IP address for the reverse connection payload"
+  },
+  "lport": {
+    "type": "port",
+    "label": "LPORT (Port number)",
+    "required": true,
+    "default": "443",
+    "validation": {
+      "pattern": "^\\d{1,5}$",
+      "min": 1,
+      "max": 65535,
+      "custom": "validate_port"
+    },
+    "error_message": "Port must be between 1 and 65535",
+    "description": "Port for the reverse connection"
+  },
+  "url": {
+    "type": "url",
+    "label": "URL to clone",
+    "required": true,
+    "validation": {
+      "pattern": "^(https?://).+",
+      "custom": "validate_url"
+    },
+    "error_message": "Invalid URL format. Expected: https://example.com",
+    "description": "Full URL of the website to clone (must include http:// or https://)"
+  },
+  "ssl": {
+    "type": "boolean",
+    "label": "Enable SSL",
+    "required": false,
+    "default": false,
+    "validation": {},
+    "error_message": "",
+    "description": "Use SSL certificate for the web attack"
+  },
+  "smtp_server": {
+    "type": "string",
+    "label": "SMTP Server",
+    "required": true,
+    "validation": {
+      "min_length": 3
+    },
+    "error_message": "Enter a valid SMTP server address",
+    "description": "SMTP server address for sending emails"
+  },
+  "from_email": {
+    "type": "email",
+    "label": "From email address",
+    "required": true,
+    "validation": {
+      "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+    },
+    "error_message": "Invalid email format. Expected: user@example.com",
+    "description": "Sender email address"
+  },
+  "to_emails": {
+    "type": "multi_email",
+    "label": "Target email addresses",
+    "required": true,
+    "validation": {
+      "custom": "validate_emails"
+    },
+    "error_message": "Enter at least one valid email address",
+    "description": "One or more target email addresses (comma separated)"
+  },
+  "subject": {
+    "type": "string",
+    "label": "Email subject",
+    "required": true,
+    "validation": {
+      "min_length": 1,
+      "max_length": 998
+    },
+    "error_message": "Subject cannot be empty",
+    "description": "Email subject line"
+  },
+  "body": {
+    "type": "multiline",
+    "label": "Email body",
+    "required": true,
+    "validation": {
+      "min_length": 1
+    },
+    "error_message": "Email body cannot be empty",
+    "description": "Email message content"
+  },
+  "email_list_file": {
+    "type": "file",
+    "label": "Email list file",
+    "required": false,
+    "validation": {
+      "custom": "validate_file_read"
+    },
+    "error_message": "File not found. Check the path and try again.",
+    "description": "Path to a file containing email addresses (one per line)"
+  },
+  "ssid": {
+    "type": "string",
+    "label": "Access Point SSID",
+    "required": true,
+    "default": "Free WiFi",
+    "validation": {
+      "min_length": 1,
+      "max_length": 32
+    },
+    "error_message": "SSID must be between 1 and 32 characters",
+    "description": "Wireless network name for the rogue access point"
+  },
+  "channel": {
+    "type": "number",
+    "label": "WiFi Channel",
+    "required": true,
+    "default": "6",
+    "validation": {
+      "min": 1,
+      "max": 14
+    },
+    "error_message": "Channel must be between 1 and 14",
+    "description": "802.11 channel for the access point"
+  },
+  "interface": {
+    "type": "string",
+    "label": "Wireless interface",
+    "required": true,
+    "default": "wlan0",
+    "validation": {
+      "min_length": 2
+    },
+    "error_message": "Enter a valid network interface name (e.g. wlan0)",
+    "description": "Wireless interface to use for the access point"
+  },
+  "dhcp_range": {
+    "type": "enum",
+    "label": "DHCP IP range",
+    "required": true,
+    "default": "1",
+    "options": {
+      "1": "10.0.0.100-254",
+      "2": "192.168.10.100-254"
+    },
+    "validation": {},
+    "error_message": "Select 1 or 2",
+    "description": "DHCP IP address range for clients"
+  },
+  "qr_url": {
+    "type": "url",
+    "label": "URL for QR Code",
+    "required": true,
+    "validation": {
+      "pattern": "^(https?://).+"
+    },
+    "error_message": "Invalid URL. Enter a valid URL starting with http:// or https://",
+    "description": "The URL the QR code will point to"
+  },
+  "payload_type": {
+    "type": "enum",
+    "label": "Payload type",
+    "required": true,
+    "default": "1",
+    "options": {
+      "1": "Meterpreter Memory Injection (DEFAULT)",
+      "2": "Meterpreter Multi-Memory Injection",
+      "3": "SE Toolkit Interactive Shell",
+      "4": "SE Toolkit HTTP Reverse Shell",
+      "5": "RATTE HTTP Tunneling Payload",
+      "6": "ShellCodeExec Alphanum Shellcode",
+      "7": "Import your own executable",
+      "8": "Import your own commands.txt"
+    },
+    "validation": {},
+    "error_message": "Select a valid payload type",
+    "description": "Type of payload to generate"
+  },
+  "meterpreter_payload": {
+    "type": "enum",
+    "label": "Meterpreter payload",
+    "required": true,
+    "default": "2",
+    "options": {
+      "1": "Windows Shell Reverse_TCP",
+      "2": "Windows Reverse_TCP Meterpreter",
+      "3": "Windows Reverse_TCP VNC DLL",
+      "4": "Windows Shell Reverse_TCP X64",
+      "5": "Windows Meterpreter Reverse_TCP X64",
+      "6": "Windows Meterpreter Egress Buster",
+      "7": "Windows Meterpreter Reverse HTTPS",
+      "8": "Windows Meterpreter Reverse DNS",
+      "9": "Download/Run your Own Executable"
+    },
+    "validation": {},
+    "error_message": "Select a valid Meterpreter payload",
+    "description": "Choose the Metasploit payload type"
+  },
+  "encoding": {
+    "type": "enum",
+    "label": "Payload encoding",
+    "required": true,
+    "default": "4",
+    "options": {
+      "1": "shikata_ga_nai",
+      "2": "No Encoding",
+      "3": "Multi-Encoder",
+      "4": "Backdoored Executable"
+    },
+    "validation": {},
+    "error_message": "Select a valid encoding option",
+    "description": "Payload encoding method to bypass AV"
+  },
+  "fileformat_exploit": {
+    "type": "enum",
+    "label": "FileFormat exploit",
+    "required": true,
+    "default": "13",
+    "options": {
+      "1": "DLL Hijacking Attack Vector (RAR, ZIP)",
+      "2": "Document UNC LM SMB Capture Attack",
+      "3": "MS15-100 Windows Media Center MCL",
+      "4": "MS14-017 Word RTF Object Confusion",
+      "5": "Windows CreateSizedDIBSECTION Buffer Overflow",
+      "6": "Word RTF pFragments (MS10-087)",
+      "7": "Adobe Flash Player Button RCE",
+      "8": "Adobe CoolType SING Table",
+      "9": "Adobe Flash Player newfunction",
+      "10": "Adobe Collab.collectEmailInfo",
+      "11": "Adobe Collab.getIcon",
+      "12": "Adobe JBIG2Decode Memory Corruption",
+      "13": "Adobe PDF Embedded EXE SE",
+      "14": "Adobe util.printf() Buffer Overflow",
+      "15": "Custom EXE to VBA (RAR)",
+      "16": "Adobe U3D CLODProgressiveMeshDeclaration",
+      "17": "Adobe PDF Embedded EXE (NOJS)",
+      "18": "Foxit PDF Reader v4.1.1 Title Buffer Overflow",
+      "19": "Apple QuickTime PICT PnSize",
+      "20": "Nuance PDF Reader v6.0 Launch Buffer Overflow",
+      "21": "Adobe Reader u3D Memory Corruption",
+      "22": "MSCOMCTL ActiveX (ms12-027)"
+    },
+    "validation": {},
+    "error_message": "Select a valid fileformat exploit",
+    "description": "File format exploit to embed in the payload"
+  },
+  "target": {
+    "type": "ip_or_domain",
+    "label": "Target IP or hostname",
+    "required": true,
+    "validation": {
+      "custom": "validate_target"
+    },
+    "error_message": "Enter a valid IP address or hostname (e.g. 192.168.1.1 or example.com)",
+    "description": "Target system IP address or hostname"
+  },
+  "target_cidr": {
+    "type": "cidr",
+    "label": "CIDR notation / IP / IP file",
+    "required": true,
+    "validation": {
+      "custom": "validate_cidr_or_file"
+    },
+    "error_message": "Enter a valid CIDR (e.g. 192.168.1.0/24), single IP, or path to an IP list file",
+    "description": "Target network in CIDR notation or path to file with IP addresses"
+  },
+  "username": {
+    "type": "string",
+    "label": "Username",
+    "required": false,
+    "default": "sa",
+    "validation": {
+      "min_length": 1
+    },
+    "error_message": "Username cannot be empty",
+    "description": "Database username for brute force"
+  },
+  "password": {
+    "type": "password",
+    "label": "Password",
+    "required": false,
+    "validation": {
+      "min_length": 0
+    },
+    "error_message": "",
+    "description": "Password for direct database connection"
+  },
+  "wordlist": {
+    "type": "file",
+    "label": "Wordlist file",
+    "required": false,
+    "default": "default",
+    "validation": {
+      "custom": "validate_file_read"
+    },
+    "error_message": "File not found. Leave empty to use the default wordlist.",
+    "description": "Path to a wordlist file for password brute forcing"
+  },
+  "nat": {
+    "type": "boolean",
+    "label": "Using NAT/Port Forwarding?",
+    "required": false,
+    "default": false,
+    "validation": {},
+    "error_message": "",
+    "description": "Enable if your SET machine is behind NAT"
+  },
+  "external_ip": {
+    "type": "ip",
+    "label": "External IP address",
+    "required": false,
+    "validation": {
+      "pattern": "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+    },
+    "error_message": "Invalid external IP address",
+    "description": "Your external/public IP address (for NAT setup)"
+  }
+}
