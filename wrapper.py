@@ -307,12 +307,14 @@ class DependencyChecker:
             "/opt/setoolkit/setoolkit",
         ]
         for c in candidates:
-            r = subprocess.run(["which", c] if "/" not in c else (["test", "-x", c],),
-                              capture_output=True, text=True)
-            if r.returncode == 0:
-                return c
-            if "/" in c and Path(c).exists():
-                return c
+            if "/" in c:
+                p = Path(c)
+                if p.is_file() and os.access(str(p), os.X_OK):
+                    return str(p.resolve())
+            else:
+                found = shutil.which(c)
+                if found:
+                    return found
         return ""
 
     @staticmethod
