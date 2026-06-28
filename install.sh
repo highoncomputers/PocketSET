@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 # Auto-detect if we're running via curl-pipe-bash (standalone)
 if [ ! -f "wrapper.py" ]; then
@@ -8,8 +8,9 @@ if [ ! -f "wrapper.py" ]; then
     cd /tmp/PocketSET
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+SCRIPT_SRC="${BASH_SOURCE[0]:-$0}"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SRC")" 2>/dev/null && pwd || echo "$PWD")"
+[ -n "$SCRIPT_DIR" ] && cd "$SCRIPT_DIR" 2>/dev/null || true
 
 echo "╔══════════════════════════════════════════════════════╗"
 echo "║            PocketSET v1.0 — Quick Install            ║"
@@ -41,19 +42,23 @@ fi
 echo "[*] Python: $(python3 --version 2>&1)"
 
 # --- INSTALL SET ---
-_install_from_source() {
+_install_set_source() {
     local TMPDIR
     TMPDIR=$(mktemp -d)
     echo "  -> Cloning SET from GitHub..."
     git clone --depth 1 https://github.com/trustedsec/social-engineer-toolkit.git "$TMPDIR/set"
-    (cd "$TMPDIR/set" && python3 -m pip install -e . 2>/dev/null) || {
-        echo "  -> Trying setup.py..."
-        (cd "$TMPDIR/set" && $SUDO python3 setup.py 2>/dev/null) || {
-            echo "[!] Could not install SET automatically."
-            echo "    Run manually: cd $TMPDIR/set && pip install -e ."
-            return 1
-        }
+    echo "  -> Installing SET via pip..."
+    (cd "$TMPDIR/set" && python3 -m pip install -e . --break-system-packages) && {
+        echo "[✓] SET installed from source"
+        return 0
     }
+    (cd "$TMPDIR/set" && python3 -m pip install -e .) && {
+        echo "[✓] SET installed from source"
+        return 0
+    }
+    echo "[!] Could not install SET automatically."
+    echo "    Run: cd $TMPDIR/set && pip install -e ."
+    return 1
 }
 
 install_set() {
@@ -62,16 +67,18 @@ install_set() {
         return 0
     fi
     echo "[*] Installing Social-Engineer Toolkit..."
-    if command -v apt &>/dev/null; then
-        echo "  -> Trying apt..."
+    IS_KALI=0
+    grep -qi kali /etc/os-release 2>/dev/null && IS_KALI=1
+    if command -v apt &>/dev/null && [ "$IS_KALI" = "1" ]; then
+        echo "  -> Kali detected, trying apt..."
         $SUDO apt update -qq 2>/dev/null || true
-        $SUDO apt install -y set 2>/dev/null && {
+        if $SUDO apt install -y set 2>/dev/null; then
             echo "[✓] SET installed via apt"
             return 0
-        }
+        fi
         echo "  -> apt failed, trying source..."
     fi
-    _install_from_source
+    _install_set_source
 }
 
 install_set || echo "[!] SET install had issues — some attacks may not work"
@@ -92,10 +99,17 @@ echo "[✓] SET located at: ${SETOOLKIT_PATH:-not in PATH}"
 
 # --- INSTALL PYTHON DEPS ---
 echo "[*] Installing Python dependencies..."
-python3 -m pip install --upgrade rich pexpect Pillow qrcode -q 2>/dev/null || \
-    python3 -m pip install rich pexpect Pillow qrcode --break-system-packages -q 2>/dev/null || \
-    echo "[!] Some pip packages failed — try: pip install rich pexpect"
-echo "[✓] Python dependencies installed"
+pip_install() {
+    python3 -m pip install "$@" -q 2>/dev/null && return 0
+    python3 -m pip install "$@" -q --break-system-packages 2>/dev/null && return 0
+    return 1
+}
+DEPS="rich pexpect Pillow qrcode"
+if pip_install $DEPS; then
+    echo "[✓] Python dependencies installed"
+else
+    echo "[!] pip install had issues — run: pip install $DEPS"
+fi
 
 # --- COPY TO /opt FOR PERSISTENCE ---
 echo "[*] Installing PocketSET to /opt/PocketSET..."
