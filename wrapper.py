@@ -95,11 +95,15 @@ def validate_url(url: str) -> bool:
         return False
     return bool(re.match(r'^https?://[^\s/$.?#].[^\s]*$', u))
 
-def validate_email(e: str) -> bool:
-    return bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', e.strip()))
+def validate_email(e: str) -> tuple[bool, str]:
+    if bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', e.strip())):
+        return True, ""
+    return False, "Invalid email format"
 
-def validate_file_read(p: str) -> bool:
-    return Path(p.strip()).expanduser().exists()
+def validate_file_read(p: str) -> tuple[bool, str]:
+    if Path(p.strip()).expanduser().exists():
+        return True, ""
+    return False, "File not found"
 
 def validate_cidr(c: str) -> bool:
     c = c.strip()
@@ -131,11 +135,13 @@ class Validator:
                 return False, rules.get("error_message", "Invalid URL format")
             return True, ""
         if custom == "validate_file_read":
-            if not validate_file_read(v):
+            ok, _ = validate_file_read(v)
+            if not ok:
                 return False, rules.get("error_message", "File not found")
             return True, ""
         if custom == "validate_cidr_or_file":
-            if validate_cidr(v) or validate_ip(v) or validate_file_read(v):
+            file_ok, _ = validate_file_read(v)
+            if validate_cidr(v) or validate_ip(v) or file_ok:
                 return True, ""
             return False, rules.get("error_message", "Invalid CIDR, IP, or file path")
         if custom == "validate_target":
@@ -147,7 +153,8 @@ class Validator:
             if not parts:
                 return False, "Enter at least one email"
             for e in parts:
-                if not validate_email(e):
+                ok, _ = validate_email(e)
+                if not ok:
                     return False, f"Invalid email: {e}"
             return True, ""
         pattern = rules.get("pattern", "")
