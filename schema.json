@@ -25,6 +25,15 @@
       },
       "6": {
         "label": "Help, Credits, and About"
+      },
+      "7": {
+        "label": "Attack Presets (save/load)"
+      },
+      "8": {
+        "label": "Plugins"
+      },
+      "9": {
+        "label": "Attack History"
       }
     },
     "social_engineering": {

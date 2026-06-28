@@ -1,0 +1,14 @@
+{
+  "name": "Rogue AP - Credential Harvest",
+  "description": "Create a rogue WiFi access point with DNS spoofing to capture credentials",
+  "attack_type": "wireless",
+  "params": {
+    "wireless_action": "1",
+    "ssid": "Free Airport WiFi",
+    "channel": "6",
+    "interface": "wlan0",
+    "dhcp_range": "1"
+  },
+  "platform": "linux",
+  "created": "2026-01-01T00:00:00"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "QR Code - Malicious URL",
+  "description": "Generate a QR code pointing to a credential harvesting site",
+  "attack_type": "qrcode",
+  "params": {
+    "qr_url": "http://192.168.1.100"
+  },
+  "platform": "any",
+  "created": "2026-01-01T00:00:00"
+}

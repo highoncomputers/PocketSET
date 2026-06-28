@@ -1,0 +1,12 @@
+{
+  "name": "Teensy USB - PowerShell Reverse Shell",
+  "description": "Program a Teensy USB device to deliver a PowerShell reverse shell",
+  "attack_type": "teensy",
+  "params": {
+    "teensy_type": "1",
+    "lhost": "192.168.1.100",
+    "lport": "443"
+  },
+  "platform": "any",
+  "created": "2026-01-01T00:00:00"
+}

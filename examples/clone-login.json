@@ -1,0 +1,17 @@
+{
+  "name": "Clone Login Page - Spear Phish",
+  "description": "Clone a login page and send mass emails with malicious attachment",
+  "attack_type": "spearphish",
+  "params": {
+    "attack_type": "1",
+    "lhost": "192.168.1.100",
+    "lport": "443",
+    "fileformat": "13",
+    "smtp_server": "smtp.gmail.com:587",
+    "from_email": "attacker@example.com",
+    "subject": "Your account needs attention",
+    "body": "Please review the attached document immediately."
+  },
+  "platform": "any",
+  "created": "2026-01-01T00:00:00"
+}

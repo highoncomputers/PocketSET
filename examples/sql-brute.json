@@ -1,0 +1,15 @@
+{
+  "name": "MSSQL Brute Force - CIDR Scan",
+  "description": "Scan a subnet for MSSQL servers and brute force the sa account",
+  "attack_type": "mssql",
+  "params": {
+    "mssql_mode": "1",
+    "scan_source": "1",
+    "target_cidr": "192.168.1.0/24",
+    "port": "1433",
+    "username": "sa",
+    "wordlist": "default"
+  },
+  "platform": "any",
+  "created": "2026-01-01T00:00:00"
+}
