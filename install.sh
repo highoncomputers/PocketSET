@@ -83,6 +83,23 @@ install_set() {
 
 install_set || echo "[!] SET install had issues — some attacks may not work"
 
+# --- INSTALL OPTIONAL SYSTEM DEPS ---
+echo "[*] Installing optional system dependencies (wireless, email)..."
+$SUDO apt install -y aircrack-ng dsniff isc-dhcp-server sendmail 2>/dev/null && \
+    echo "[✓] System dependencies installed" || \
+    echo "[!] Some system deps failed — wireless/email attacks may not work"
+
+# --- INSTALL METASPLOIT ---
+if command -v msfconsole &>/dev/null; then
+    echo "[✓] Metasploit already installed ($(which msfconsole))"
+else
+    echo "[*] Installing Metasploit Framework..."
+    curl -fsSL https://raw.githubusercontent.com/rapid7/metasploit-omnibus/master/config/templates/metasploit-framework-wrappers/msfupdate.erb > /tmp/msfinstall
+    chmod +x /tmp/msfinstall
+    /tmp/msfinstall 2>/dev/null && echo "[✓] Metasploit installed" || \
+        echo "[!] Metasploit install failed — MSF-dependent attacks disabled"
+fi
+
 # --- VERIFY SET ---
 SETOOLKIT_PATH=""
 if command -v setoolkit &>/dev/null; then

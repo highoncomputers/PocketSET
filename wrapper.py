@@ -11,7 +11,6 @@ try:
     from rich.table import Table
     from rich.layout import Layout
     from rich.live import Live
-    from rich.markdown import Markdown
     from rich.text import Text
     from rich.columns import Columns
     from rich import box
@@ -262,31 +261,22 @@ class Disclaimer:
         if cls.is_accepted():
             return True
         console.clear()
-        text = textwrap.dedent("""\
-        [bold red]╔══════════════════════════════════════════════════════════════╗
-        ║                     LEGAL DISCLAIMER                         ║
-        ╚══════════════════════════════════════════════════════════════╝[/]
-
-        [yellow]The Social-Engineer Toolkit (SET) is a penetration testing
-        framework for AUTHORIZED security assessments ONLY.[/]
-
-        By using PocketSET you agree that:
-
-        [white]  • You have explicit written permission to test the
-            target systems, networks, and/or personnel
-        • You will not use SET for any illegal or unauthorized
-            purpose
-        • You accept full responsibility for any consequences
-            arising from your use of this tool
-        • You comply with all applicable local, state, federal,
-            and international laws[/]
-
-        [bold red]Unauthorized use is a criminal offence.[/]
-
-        [dim]This disclaimer is displayed once per session.
-        Acceptance is recorded in ~/.pocketset/disclaimer_accepted[/]
-        """)
-        console.print(Panel(Markdown(text.replace('[bold red]', '**').replace('[/]', '').replace('[yellow]', '').replace('[white]', '').replace('[/bold red]', '')), border_style="red", title="[bold red]LEGAL DISCLAIMER[/]"))
+        panel_text = (
+            "[bold red]The Social-Engineer Toolkit (SET) is a penetration testing\n"
+            "framework for AUTHORIZED security assessments ONLY.[/]\n\n"
+            "By using PocketSET you agree that:\n\n"
+            "  [white]• You have explicit written permission to test the\n"
+            "    target systems, networks, and/or personnel\n"
+            "  • You will not use SET for any illegal or unauthorized\n"
+            "    purpose\n"
+            "  • You accept full responsibility for any consequences\n"
+            "    arising from your use of this tool\n"
+            "  • You comply with all applicable local, state, federal,\n"
+            "    and international laws[/]\n\n"
+            "[bold red]Unauthorized use is a criminal offence.[/]\n\n"
+            "[dim]This disclaimer is displayed once per session.[/]"
+        )
+        console.print(Panel(panel_text, border_style="red", title="[bold red]LEGAL DISCLAIMER[/]"))
         console.print()
         val = Prompt.ask("[bold red]Type I AGREE to accept, or anything else to exit[/]")
         if val.strip().upper() == "I AGREE":
@@ -453,96 +443,105 @@ class SETExecutor:
     def _run_pexpect(self):
         import pexpect
         import pexpect.exceptions as pexcp
+        child = None
         output = []
         setoolkit_cmd = self.setoolkit_cmd
         if "/" not in setoolkit_cmd and not setoolkit_cmd.startswith("./"):
             r = subprocess.run(["which", setoolkit_cmd], capture_output=True, text=True)
             if r.returncode == 0:
                 setoolkit_cmd = r.stdout.strip()
-        child = pexpect.spawn(
-            setoolkit_cmd,
-            timeout=self.timeout,
-            encoding="utf-8",
-            codec_errors="replace",
-            env={**os.environ, "TERM": "xterm-256color", "POCKETSET": "1"}
-        )
-        # Wait for menu to load (proot may be slow - longer timeout)
         try:
-            child.expect(r"99\) Exit the Social-Engineer Toolkit", timeout=120)
-        except pexcp.TIMEOUT:
-            output.append("[!] Initial menu load timed out (proot/termux may be slow)")
-            child.close()
-            return "\n".join(output)
-        except pexcp.EOF:
-            output.append("[!] SET exited before menu loaded")
-            child.close()
-            return "\n".join(output)
-        output.append(child.before or "")
-        # Send automate lines
-        script_text = self.script_path.read_text()
-        for line in script_text.split("\n"):
-            if not line.strip():
-                child.sendline("")
-            else:
-                child.sendline(line.strip())
-            import time as _time
-            _time.sleep(0.5)
+            child = pexpect.spawn(
+                setoolkit_cmd,
+                timeout=self.timeout,
+                encoding="utf-8",
+                codec_errors="replace",
+                env={**os.environ, "TERM": "xterm-256color", "POCKETSET": "1"}
+            )
             try:
-                idx = child.expect([
-                    r"99\) Exit the Social-Engineer Toolkit",
-                    r"99\) Return back to the main menu",
-                    pexcp.EOF,
-                    pexcp.TIMEOUT,
-                ], timeout=15)
-                before = child.before or ""
-                after = child.after or ""
-                chunk = before + (str(after) if isinstance(after, str) else "")
-                if chunk:
-                    output.append(chunk)
-                    self.output_lines.append(chunk)
-                if idx == 2:
-                    break
+                child.expect(r"99\) Exit the Social-Engineer Toolkit", timeout=120)
+            except pexcp.TIMEOUT:
+                output.append("[!] Initial menu load timed out (proot/termux may be slow)")
+                return "\n".join(output)
             except pexcp.EOF:
-                break
-        try:
-            child.expect(pexcp.EOF, timeout=120)
+                output.append("[!] SET exited before menu loaded")
+                return "\n".join(output)
             output.append(child.before or "")
-        except: pass
-        child.close()
+            script_text = self.script_path.read_text()
+            for line in script_text.split("\n"):
+                if not line.strip():
+                    child.sendline("")
+                else:
+                    child.sendline(line.strip())
+                import time as _time
+                _time.sleep(0.5)
+                try:
+                    idx = child.expect([
+                        r"99\) Exit the Social-Engineer Toolkit",
+                        r"99\) Return back to the main menu",
+                        pexcp.EOF,
+                        pexcp.TIMEOUT,
+                    ], timeout=15)
+                    before = child.before or ""
+                    after = child.after or ""
+                    chunk = before + (str(after) if isinstance(after, str) else "")
+                    if chunk:
+                        output.append(chunk)
+                        self.output_lines.append(chunk)
+                    if idx == 2:
+                        break
+                except pexcp.EOF:
+                    break
+            try:
+                child.expect(pexcp.EOF, timeout=120)
+                output.append(child.before or "")
+            except: pass
+        finally:
+            if child:
+                try: child.close(force=True)
+                except: pass
         return "\n".join(output)
 
     def _run_subprocess(self):
         script_text = self.script_path.read_text()
         setoolkit_cmd = self.setoolkit_cmd
-        proc = subprocess.Popen(
-            setoolkit_cmd if "/" in setoolkit_cmd else [setoolkit_cmd],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            env={**os.environ, "TERM": "xterm-256color", "POCKETSET": "1"}
-        )
+        proc = None
         stdout_lines = []
-        def reader():
-            for line in proc.stdout:
-                stdout_lines.append(line)
-                self.output_lines.append(line)
-        import threading
-        t = threading.Thread(target=reader, daemon=True)
-        t.start()
         try:
-            proc.stdin.write(script_text + "\n")
-            proc.stdin.flush()
-            proc.stdin.close()
-        except: pass
-        try:
-            proc.wait(timeout=self.timeout)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
-            return "".join(stdout_lines) + "\n[red]Command timed out[/]"
-        t.join(timeout=5)
+            proc = subprocess.Popen(
+                setoolkit_cmd if "/" in setoolkit_cmd else [setoolkit_cmd],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                env={**os.environ, "TERM": "xterm-256color", "POCKETSET": "1"}
+            )
+            def reader():
+                for line in proc.stdout:
+                    stdout_lines.append(line)
+                    self.output_lines.append(line)
+            import threading
+            t = threading.Thread(target=reader, daemon=True)
+            t.start()
+            try:
+                proc.stdin.write(script_text + "\n")
+                proc.stdin.flush()
+                proc.stdin.close()
+            except: pass
+            try:
+                proc.wait(timeout=self.timeout)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+                return "".join(stdout_lines) + "\n[red]Command timed out[/]"
+            t.join(timeout=5)
+        finally:
+            if proc and proc.poll() is None:
+                try: proc.kill()
+                except: pass
+                try: proc.wait(timeout=5)
+                except: pass
         return "".join(stdout_lines)
 
     def execute(self):
@@ -826,7 +825,13 @@ def handle_main_menu_choice(choice: str) -> bool:
             console.clear()
             show_banner()
             soc_opts = MENU_TREE["social_engineering"]
-            soc_menu = {k: v["label"] for k, v in soc_opts.items()}
+            has_msf_sub = DependencyChecker.check_metasploit()
+            soc_menu = {}
+            for k, v in soc_opts.items():
+                label = v["label"]
+                if v.get("requires_msf", False) and not has_msf_sub:
+                    label = f"[dim]{label}  [requires Metasploit][/]"
+                soc_menu[k] = label
             soc_menu["99"] = "Return to Main Menu"
             sub = prompt_choice("Social-Engineering Attacks", soc_menu)
             if sub == "99": break
@@ -834,7 +839,12 @@ def handle_main_menu_choice(choice: str) -> bool:
             params = None
             needs_msf = soc_opts[sub].get("requires_msf", False)
             if needs_msf and not DependencyChecker.check_metasploit():
-                show_error("Metasploit Required", "This attack requires Metasploit (msfconsole) which was not found.")
+                show_error("Metasploit Required",
+                    "This attack requires Metasploit (msfconsole) which was not found.\n"
+                    "Install with: curl https://raw.githubusercontent.com/rapid7/"
+                    "metasploit-omnibus/master/config/templates/"
+                    "metasploit-framework-wrappers/msfupdate.erb | bash")
+                console.input("\n[yellow]Press Enter to return to menu[/]")
                 continue
             if sub == "1":
                 params = wizard.run_spearphish()
@@ -975,20 +985,17 @@ def handle_main_menu_choice(choice: str) -> bool:
     elif choice == "6":
         console.clear()
         show_banner()
-        about_text = textwrap.dedent(f"""\
-        [bold cyan]PocketSET v{VERSION}[/]
-
-        [white]Interactive TUI wrapper for the Social-Engineer Toolkit[/]
-
-        [bold]Original SET Author:[/] David Kennedy (ReL1K)
-        [bold]SET Repository:[/] https://github.com/trustedsec/social-engineer-toolkit
-        [bold]PocketSET:[/] https://github.com/highoncomputers/PocketSET
-
-        [dim]PocketSET provides a beginner-friendly interface for SET,
-        handling all menu navigation and parameter collection
-        automatically. No terminal knowledge required.[/]
-        """)
-        console.print(Panel(Markdown(about_text.replace('[bold cyan]', '**').replace('[white]', '').replace('[bold]', '**').replace('[/]', '').replace('[dim]', '*').replace('[/dim]', '*')), title="[bold]Help & About[/]", border_style="cyan"))
+        about_text = (
+            f"[bold cyan]PocketSET v{VERSION}[/]\n\n"
+            "[white]Interactive TUI wrapper for the Social-Engineer Toolkit[/]\n\n"
+            "[bold]Original SET Author:[/] David Kennedy (ReL1K)\n"
+            "[bold]SET Repository:[/] https://github.com/trustedsec/social-engineer-toolkit\n"
+            "[bold]PocketSET:[/] https://github.com/highoncomputers/PocketSET\n\n"
+            "[dim]PocketSET provides a beginner-friendly interface for SET,\n"
+            "handling all menu navigation and parameter collection\n"
+            "automatically. No terminal knowledge required.[/]"
+        )
+        console.print(Panel(about_text, title="[bold]Help & About[/]", border_style="cyan"))
         console.print("\n[dim]Press Enter to continue...[/]", end="")
         input()
         return True
@@ -1024,7 +1031,12 @@ def main():
         display_opts = {k: v["label"] if isinstance(v, dict) else v for k, v in main_opts.items()}
         display_opts["99"] = "Exit PocketSET"
         set_path_short = setoolkit_path if len(setoolkit_path) < 40 else "..." + setoolkit_path[-36:]
-        show_info(f"SET: [green]{set_path_short}[/]  |  Metasploit: {'[green]Available[/]' if has_msf else '[yellow]Not Found[/]'}")
+        show_info(f"SET: [green]{set_path_short}[/]")
+        if has_msf:
+            show_info("Metasploit: [green]Available[/]")
+        else:
+            console.print(Panel("[yellow]⚠ Metasploit not found — attack options 1-4 will be disabled[/]",
+                                border_style="yellow", box=box.ROUNDED))
         show_rule()
         choice = prompt_choice("Main Menu", display_opts)
         if choice == "99":
