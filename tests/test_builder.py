@@ -115,5 +115,5 @@ class TestAutomateScriptBuilder:
         path = b.write()
         assert path.exists()
         assert path.exists()
-        assert path.read_text().strip().split("\n")[-2:] == ["99", "99"], "should append exit sequence"
+        assert path.read_text().strip().split("\n")[-3:] == ["99", "99", "99"], "should append exit sequence"
         path.unlink()

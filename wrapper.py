@@ -86,6 +86,72 @@ def _load_validation() -> dict:
     return {}
 VAL_SCHEMA = _load_validation()
 
+# ── Output Filtering ───────────────────────────────────────────────────────────
+HIGHLIGHT_KEYWORDS = [
+    'generated', 'successful', 'complete',
+    'launching', 'listening', 'received',
+    'qrcode', 'listener',
+    'error:', 'fail', 'timeout', 'exception',
+    'has been', 'written to', 'saved to',
+    'opened', 'connecting',
+    'starting exploit', 'attack complete',
+    'command execution', 'session opened',
+    'meterpreter', 'shell',
+]
+
+HIGHLIGHT_EXCLUDE_PREFIXES = (
+    '1)', '2)', '3)', '4)', '5)', '6)', '7)', '8)', '9)', '10)',
+    '99)',
+    '  1)', '  2)', '  3)', '  4)', '  5)', '  6)', '  7)', '  8)', '  9)',
+)
+
+def is_highlight_line(line: str) -> bool:
+    if not line or len(line) < 10:
+        return False
+    low = line.lower().strip()
+    if low.startswith(HIGHLIGHT_EXCLUDE_PREFIXES):
+        return False
+    if 'created by:' in low or 'revision' in low:
+        return False
+    if low.startswith('[---]'):
+        return False
+    if low.startswith('select from'):
+        return False
+    return any(kw in low for kw in HIGHLIGHT_KEYWORDS)
+
+def strip_ansi(text: str) -> str:
+    ansi_re = re.compile(r'\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?(?:\x1b\\|$)')
+    return ansi_re.sub('', text)
+
+def smart_filter_output(text: str) -> str:
+    lines = text.split('\n')
+    seen = set()
+    result = []
+    for line in lines:
+        key = line.strip().lower()
+        if ('social-engineer toolkit' in key or 'set version' in key
+                or 'select from the menu' in key or '[-]' == line.strip()[:3]):
+            if key in seen:
+                continue
+            seen.add(key)
+        result.append(line)
+    return '\n'.join(result)
+
+def detect_artifacts(output: str, attack_name: str) -> list[Path]:
+    artifacts = []
+    set_reports = Path.home() / ".set" / "reports"
+    if set_reports.exists():
+        now = time.time()
+        files = sorted(set_reports.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
+        for f in files[:10]:
+            if now - f.stat().st_mtime < 120:
+                artifacts.append(f)
+    if "qrcode" in attack_name.lower():
+        for f in set_reports.glob("*qrcode*"):
+            if f not in artifacts:
+                artifacts.append(f)
+    return artifacts
+
 # ── Config ────────────────────────────────────────────────────────────────────
 DEFAULT_CONFIG: dict[str, Any] = {
     "platform": "auto",
@@ -571,7 +637,7 @@ class AutomateScriptBuilder:
     def write(self, exit_cleanly: bool = True) -> Path:
         lines = list(self.lines)
         if exit_cleanly:
-            lines.extend(["99", "99"])
+            lines.extend(["99", "99", "99"])
         text = "\n".join(lines) + "\n"
         self.script_path.parent.mkdir(parents=True, exist_ok=True)
         self.script_path.write_text(text)
@@ -580,10 +646,9 @@ class AutomateScriptBuilder:
     def build_social_engineering(self, main_choice: str, sub_choice: str, params: dict) -> None:
         self.add("1")
         self.add(main_choice)
-        attack_choice = sub_choice
-        self.add(attack_choice)
 
         if main_choice == "2":
+            self.add(sub_choice)
             source_choice = params.get("web_source", "2")
             self.add(source_choice)
             if source_choice == "2":
@@ -634,6 +699,7 @@ class AutomateScriptBuilder:
                 self.add(params.get("lhost", ""))
                 self.add(params.get("lport", "443"))
         elif main_choice == "1":
+            self.add(sub_choice)
             at = int(sub_choice)
             if at == 1:
                 self.add(params.get("fileformat", "1"))
@@ -705,7 +771,7 @@ class SETExecutor:
                 cmd = resolved
         return cmd
 
-    def _run_pexpect_live(self, progress) -> tuple[str, bool]:
+    def _run_pexpect_live(self, progress=None, live_callback=None) -> tuple[str, bool]:
         import pexpect
         import pexpect.exceptions as pexcp
         child = None
@@ -726,7 +792,12 @@ class SETExecutor:
                 return "\n".join(output_chunks) + "\n[!] Initial menu load timed out", True
             except pexcp.EOF:
                 return "\n".join(output_chunks) + "\n[!] SET exited before menu loaded", True
-            output_chunks.append(child.before or "")
+
+            initial = child.before or ""
+            output_chunks.append(initial)
+            if live_callback:
+                live_callback(initial)
+
             script_text = self.script_path.read_text()
             lines = [l for l in script_text.split("\n")]
             total = len(lines)
@@ -739,8 +810,23 @@ class SETExecutor:
                                     description=f"[cyan]Sending SET commands... ({i+1}/{total})[/]")
                 time.sleep(CONFIG.get("pexpect_delay", 0.3))
 
+            while True:
+                try:
+                    chunk = child.read_nonblocking(size=8192, timeout=0.3)
+                    if chunk:
+                        output_chunks.append(chunk)
+                        self.output_lines.append(chunk)
+                        if live_callback:
+                            live_callback(chunk)
+                except pexcp.TIMEOUT:
+                    if not child.isalive():
+                        break
+                    continue
+                except pexcp.EOF:
+                    break
+
             try:
-                child.expect(pexcp.EOF, timeout=self.timeout)
+                child.expect(pexcp.EOF, timeout=5)
             except Exception:
                 pass
             captured = child.before or ""
@@ -752,6 +838,8 @@ class SETExecutor:
             if captured:
                 output_chunks.append(captured)
                 self.output_lines.append(captured)
+                if live_callback:
+                    live_callback(captured)
         finally:
             self._running = False
             if child:
@@ -761,7 +849,7 @@ class SETExecutor:
                     pass
         return "\n".join(output_chunks), False
 
-    def _run_subprocess_live(self, progress) -> tuple[str, bool]:
+    def _run_subprocess_live(self, progress=None, live_callback=None) -> tuple[str, bool]:
         script_text = self.script_path.read_text()
         cmd = self._resolve_cmd()
         proc = None
@@ -781,6 +869,8 @@ class SETExecutor:
                 for line in proc.stdout:
                     stdout_lines.append(line)
                     self.output_lines.append(line)
+                    if live_callback:
+                        live_callback(line)
             t = threading.Thread(target=reader, daemon=True)
             t.start()
             try:
@@ -817,13 +907,13 @@ class SETExecutor:
                     pass
         return "".join(stdout_lines), False
 
-    def execute(self, progress=None) -> str:
+    def execute(self, progress=None, live_callback=None) -> str:
         try:
             if DependencyChecker.check_pexpect():
-                output, _ = self._run_pexpect_live(progress)
+                output, _ = self._run_pexpect_live(progress, live_callback)
                 return output
             else:
-                output, _ = self._run_subprocess_live(progress)
+                output, _ = self._run_subprocess_live(progress, live_callback)
                 return output
         except FileNotFoundError:
             return "ERROR: setoolkit not found. Install SET first."
@@ -1098,29 +1188,124 @@ def confirm_and_execute(builder: AutomateScriptBuilder, attack_name: str,
     script_path = builder.write()
     console.clear()
     show_banner()
-    show_info(f"Executing: {attack_name}")
-    show_info("Starting SET...")
     executor = SETExecutor(script_path)
 
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
-                  BarColumn(), transient=False) as progress:
-        task = progress.add_task("[cyan]Running SET attack...", total=None)
+    # ── Live Display ──
+    output_buffer: list[str] = []
+    highlight_lines: list[str] = []
+    chunk_count = 0
+    attack_start = time.time()
+
+    header_text = Text.assemble(
+        ("Attack: ", "bold"), (f"{attack_name}", "white"), "\n",
+        ("Status: ", "bold"), ("Running...", "yellow"), "\n",
+        ("Waiting for SET output...", "dim"),
+    )
+    header = Panel(header_text, border_style="cyan")
+    output_panel = Panel("[dim]Waiting for SET output...[/]", title="[bold]Live Output[/]", border_style="dim")
+    highlights_panel = Panel("[dim]No key events detected yet.[/]", title="[bold]Highlights[/]", border_style="dim")
+
+    layout = Layout()
+    layout.split_column(
+        Layout(name="header", size=5),
+        Layout(name="output"),
+        Layout(name="highlights", size=6),
+    )
+    layout["header"].update(header)
+    layout["output"].update(output_panel)
+    layout["highlights"].update(highlights_panel)
+
+    error_occurred = False
+
+    with Live(layout, refresh_per_second=4, screen=False) as live:
+        def live_callback(chunk: str) -> None:
+            nonlocal chunk_count, output_buffer, highlight_lines
+            cleaned = strip_ansi(chunk)
+            if not cleaned:
+                return
+            output_buffer.append(cleaned)
+            chunk_count += 1
+
+            full_text = "".join(output_buffer)
+            lines = full_text.split("\n")
+            display_lines = lines[-50:]
+            if len(lines) > 50:
+                display_text = "[dim]\u22ee[/]\n" + "\n".join(display_lines)
+            else:
+                display_text = "\n".join(display_lines)
+            if len(display_text) > 5000:
+                display_text = "..." + display_text[-5000:]
+            layout["output"].update(Panel(
+                display_text,
+                title=f"[bold]Live Output[/] ({chunk_count} chunks | {len(lines)} lines)",
+                border_style="cyan",
+            ))
+
+            for line in cleaned.split("\n"):
+                sline = line.strip()
+                if not sline:
+                    continue
+                if is_highlight_line(sline):
+                    if sline not in highlight_lines[-20:]:
+                        highlight_lines.append(sline)
+                        layout["highlights"].update(Panel(
+                            "\n".join(highlight_lines[-10:]),
+                            title=f"[bold]Highlights[/] ({len(highlight_lines)} events)",
+                            border_style="green" if highlight_lines else "dim",
+                        ))
+
+            live.refresh()
+
         try:
-            output = executor.execute(progress)
+            output = executor.execute(live_callback=live_callback)
         except Exception as e:
             output = f"ERROR: {e}"
+            error_occurred = True
             LOG.exception("Execution exception: %s", e)
-        progress.update(task, visible=False)
 
+    # ── Post-execution summary ──
+    elapsed = time.time() - attack_start
+    success = not error_occurred and "ERROR" not in output[:20] and not output.startswith("ERROR")
+
+    artifacts = detect_artifacts(output, attack_name)
+    total_lines = len("".join(output_buffer).split("\n")) if output_buffer else 0
+    status_text = f"[green]Completed[/] in {elapsed:.1f}s" if success else "[red]Failed[/]"
+
+    header = Panel(
+        Text.assemble(
+            ("Attack: ", "bold"), (f"{attack_name}", "white"), "\n",
+            ("Status: ", "bold"), status_text, "\n",
+            (f"{chunk_count} chunks | {total_lines} lines | {elapsed:.1f}s", "dim"),
+        ),
+        border_style="green" if success else "red",
+    )
+    console.print(header)
     show_rule()
-    success = "ERROR" not in output[:20] and not output.startswith("ERROR")
+
     if not success:
-        show_error("Execution Failed", output)
+        show_error("Execution Failed", output[:2000])
         LOG.error("SET execution failed:\n%s", output)
     else:
-        show_success("Execution Complete", "SET has finished processing.")
-        console.print(Panel(output[:3000] if len(output) > 3000 else output,
-                           title="[bold]Output[/]", border_style="green"))
+        show_success("Execution Complete", f"Completed in {elapsed:.1f}s")
+
+    if highlight_lines:
+        console.print(Panel(
+            "\n".join(highlight_lines[-15:]),
+            title="[bold]Key Events[/]",
+            border_style="green",
+        ))
+
+    for art in artifacts:
+        show_success("Artifact", str(art))
+
+    raw_output = "".join(output_buffer)
+    filtered = smart_filter_output(raw_output)
+    if filtered:
+        console.print(Panel(
+            filtered[-3000:],
+            title=f"[bold]Output Summary[/] ({len(filtered)} chars)",
+            border_style="green" if success else "red",
+        ))
 
     AttackHistory.record(attack_name, params, output, success)
     show_rule()
@@ -1134,29 +1319,62 @@ def save_report(attack_name: str, output: str, params: dict) -> None:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_name = re.sub(r'[^\w-]', '_', attack_name.lower())
     rpath = REPORTS_DIR / f"{safe_name}_{ts}.html"
+
+    cleaned = strip_ansi(output)
+    highlights = [l for l in cleaned.split("\n") if l.strip() and is_highlight_line(l.strip())]
+    artifacts = detect_artifacts(output, attack_name)
+
     html = f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>PocketSET Report - {escape(attack_name)}</title>
+<html lang="en"><head><meta charset="utf-8">
+<title>PocketSET Report - {escape(attack_name)}</title>
 <style>
-  body {{ font-family: monospace; background: #1a1a2e; color: #e0e0e0; padding: 2em; }}
-  h1 {{ color: #00d4ff; }}
-  .params {{ background: #16213e; padding: 1em; border-radius: 8px; margin: 1em 0; }}
-  .output {{ background: #0f3460; padding: 1em; border-radius: 8px; white-space: pre-wrap; }}
-  .meta {{ color: #888; font-size: 0.9em; }}
+  body {{ font-family: 'Courier New', monospace; background: #1a1a2e; color: #e0e0e0; padding: 2em; line-height: 1.5; }}
+  h1 {{ color: #00d4ff; border-bottom: 2px solid #00d4ff; padding-bottom: 0.5em; }}
+  h2 {{ color: #00d4ff; margin-top: 1.5em; }}
+  .meta {{ color: #888; font-size: 0.9em; margin: 1em 0; }}
+  .meta p {{ margin: 0.25em 0; }}
+  .params {{ background: #16213e; padding: 1em; border-radius: 8px; margin: 1em 0; border-left: 3px solid #e94560; }}
+  .highlights {{ background: #1a3a2e; padding: 1em; border-radius: 8px; margin: 1em 0; border-left: 3px solid #00d4ff; }}
+  .output {{ background: #0f3460; padding: 1em; border-radius: 8px; white-space: pre-wrap; word-break: break-all; margin: 1em 0; }}
+  .artifacts {{ background: #2e1a3a; padding: 1em; border-radius: 8px; margin: 1em 0; border-left: 3px solid #b000ff; }}
+  .artifacts a {{ color: #00ff88; }}
+  .footer {{ color: #555; font-size: 0.8em; margin-top: 2em; text-align: center; }}
+  pre {{ margin: 0; white-space: pre-wrap; word-break: break-all; }}
 </style></head><body>
 <h1>PocketSET Attack Report</h1>
 <div class="meta">
-  <p>Attack: {escape(attack_name)}</p>
-  <p>Time: {datetime.now().isoformat()}</p>
-  <p>Platform: {Platform.detect()}</p>
-  <p>Version: {VERSION}</p>
+  <p><strong>Attack:</strong> {escape(attack_name)}</p>
+  <p><strong>Time:</strong> {datetime.now().isoformat()}</p>
+  <p><strong>Platform:</strong> {Platform.detect()}</p>
+  <p><strong>Version:</strong> {VERSION}</p>
 </div>
 <div class="params">
   <h2>Parameters</h2>
   <pre>{escape(json.dumps({k: v for k, v in params.items() if k != "password"}, indent=2))}</pre>
 </div>
-<div class="output">
-  <h2>Output</h2>
-  <pre>{escape(output[:10000])}</pre>
+"""
+    if highlights:
+        html += f"""<div class="highlights">
+  <h2>Key Events ({len(highlights)})</h2>
+  <pre>{escape("\n".join(highlights))}</pre>
+</div>
+"""
+    if artifacts:
+        html += """<div class="artifacts">
+  <h2>Artifacts</h2>
+  <ul>
+"""
+        for a in artifacts:
+            html += f'    <li><a href="file://{a}">{escape(str(a))}</a></li>\n'
+        html += """  </ul>
+</div>
+"""
+    html += f"""<div class="output">
+  <h2>Raw Output</h2>
+  <pre>{escape(cleaned[:20000])}</pre>
+</div>
+<div class="footer">
+  Generated by PocketSET v{VERSION} | {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 </div>
 </body></html>"""
     rpath.write_text(html, encoding="utf-8")
