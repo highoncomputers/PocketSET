@@ -556,8 +556,11 @@ class AutomateScriptBuilder:
     def add_blank(self) -> None:
         self.lines.append("")
 
-    def write(self) -> Path:
-        text = "\n".join(self.lines) + "\n"
+    def write(self, exit_cleanly: bool = True) -> Path:
+        lines = list(self.lines)
+        if exit_cleanly:
+            lines.extend(["99", "99"])
+        text = "\n".join(lines) + "\n"
         self.script_path.parent.mkdir(parents=True, exist_ok=True)
         self.script_path.write_text(text)
         return self.script_path
@@ -644,6 +647,11 @@ class AutomateScriptBuilder:
             self.add(sub_choice)
             self.add(params.get("target", ""))
             self.add(params.get("port", "445"))
+        elif main_choice == "4":
+            self.add(params.get("target", ""))
+            self.add("")
+        elif main_choice in ("3", "5", "6"):
+            self.add(params.get("target", ""))
 
     def get_preview(self) -> str:
         return "\n".join(self.lines)
@@ -669,7 +677,7 @@ class SETExecutor:
         import pexpect
         import pexpect.exceptions as pexcp
         child = None
-        output: list[str] = []
+        output_chunks: list[str] = []
         cmd = self._resolve_cmd()
         self._running = True
         try:
@@ -678,49 +686,40 @@ class SETExecutor:
                 timeout=self.timeout,
                 encoding="utf-8",
                 codec_errors="replace",
-                env={**os.environ, "TERM": "xterm-256color", "POCKETSET": "1"}
+                env={**os.environ, "TERM": "xterm-256color", "POCKETSET": "1", "PYTHONUNBUFFERED": "1"}
             )
             try:
                 child.expect(r"99\) Exit the Social-Engineer Toolkit", timeout=120)
             except pexcp.TIMEOUT:
-                return "\n".join(output) + "\n[!] Initial menu load timed out", True
+                return "\n".join(output_chunks) + "\n[!] Initial menu load timed out", True
             except pexcp.EOF:
-                return "\n".join(output) + "\n[!] SET exited before menu loaded", True
-            output.append(child.before or "")
+                return "\n".join(output_chunks) + "\n[!] SET exited before menu loaded", True
+            output_chunks.append(child.before or "")
             script_text = self.script_path.read_text()
-            total_lines = len([l for l in script_text.split("\n") if l.strip()])
-            sent = 0
-            for line in script_text.split("\n"):
+            lines = [l for l in script_text.split("\n")]
+            total = len(lines)
+            for i, line in enumerate(lines):
                 if not self._running:
                     break
                 child.sendline(line.strip() if line.strip() else "")
-                sent += 1
                 if progress:
                     progress.update(progress.task_ids[0] if progress.task_ids else None,
-                                    description=f"[cyan]Sending SET commands... ({sent}/{total_lines})[/]")
+                                    description=f"[cyan]Sending SET commands... ({i+1}/{total})[/]")
                 time.sleep(CONFIG.get("pexpect_delay", 0.3))
-                try:
-                    idx = child.expect([
-                        r"99\) Exit the Social-Engineer Toolkit",
-                        r"99\) Return back to the main menu",
-                        pexcp.EOF,
-                        pexcp.TIMEOUT,
-                    ], timeout=15)
-                    before = child.before or ""
-                    after = child.after or ""
-                    chunk = before + (str(after) if isinstance(after, str) else "")
-                    if chunk:
-                        output.append(chunk)
-                        self.output_lines.append(chunk)
-                    if idx == 2:
-                        break
-                except pexcp.EOF:
-                    break
+
             try:
-                child.expect(pexcp.EOF, timeout=120)
-                output.append(child.before or "")
+                child.expect(pexcp.EOF, timeout=self.timeout)
             except Exception:
                 pass
+            captured = child.before or ""
+            try:
+                rest = child.read()
+                captured += rest or ""
+            except Exception:
+                pass
+            if captured:
+                output_chunks.append(captured)
+                self.output_lines.append(captured)
         finally:
             self._running = False
             if child:
@@ -728,7 +727,7 @@ class SETExecutor:
                     child.close(force=True)
                 except Exception:
                     pass
-        return "\n".join(output), False
+        return "\n".join(output_chunks), False
 
     def _run_subprocess_live(self, progress) -> tuple[str, bool]:
         script_text = self.script_path.read_text()
@@ -744,7 +743,7 @@ class SETExecutor:
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
-                env={**os.environ, "TERM": "xterm-256color", "POCKETSET": "1"}
+                env={**os.environ, "TERM": "xterm-256color", "POCKETSET": "1", "PYTHONUNBUFFERED": "1"}
             )
             def reader() -> None:
                 for line in proc.stdout:
