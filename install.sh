@@ -5,6 +5,7 @@ set -eo pipefail
 # ── Auto-clone if running via curl-pipe-bash ──────────────────────────────────
 if [ ! -f "wrapper.py" ]; then
     echo "[*] Cloning PocketSET..."
+    rm -rf /tmp/PocketSET
     git clone --depth 1 https://github.com/highoncomputers/PocketSET.git /tmp/PocketSET
     cd /tmp/PocketSET
 fi
