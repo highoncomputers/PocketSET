@@ -51,7 +51,7 @@ echo "[?] Install mode detected as: $PLATFORM"
 echo "    1) Termux (Android / proot)"
 echo "    2) Kali Linux"
 echo "    3) Other Linux"
-read -r -p "Select [1-3, default=$PLATFORM]: " PLAT_CHOICE
+read -r -p "Select [1-3, default=$PLATFORM]: " PLAT_CHOICE </dev/tty
 case "${PLAT_CHOICE:-$PLATFORM}" in
     1|termux) PLATFORM="termux"; IS_TERMUX=1; IS_KALI=0 ;;
     2|kali)   PLATFORM="kali";   IS_TERMUX=0; IS_KALI=1 ;;
