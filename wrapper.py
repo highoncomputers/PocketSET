@@ -50,10 +50,14 @@ REPORTS_DIR       = POCKETSET_DIR / "reports"
 console = Console()
 VERSION = "2.0.0"
 
+# ── Ensure directories exist before any file ops ─────────────────────────────
+for _d in (POCKETSET_DIR, LOGS_DIR, TEMP_DIR, PRESETS_DIR, PLUGINS_DIR, REPORTS_DIR):
+    _d.mkdir(parents=True, exist_ok=True)
+
 # ── Logging ───────────────────────────────────────────────────────────────────
 LOG = logging.getLogger("pocketset")
 LOG.setLevel(logging.DEBUG)
-_fh = logging.FileHandler(LOGS_DIR / "pocketset.log", encoding="utf-8")
+_fh = logging.FileHandler(LOGS_DIR / "pocketset.log", encoding="utf-8", delay=True)
 _fh.setLevel(logging.DEBUG)
 _fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 LOG.addHandler(_fh)
@@ -63,14 +67,22 @@ _ch.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 LOG.addHandler(_ch)
 
 # ── Schema ────────────────────────────────────────────────────────────────────
-with open(str(SCHEMA_PATH)) as f:
-    SCHEMA = json.load(f)
-MENU_TREE = SCHEMA["menu_tree"]
+if SCHEMA_PATH.exists():
+    with open(str(SCHEMA_PATH), encoding="utf-8") as _f:
+        SCHEMA = json.load(_f)
+    MENU_TREE = SCHEMA.get("menu_tree", {})
+else:
+    SCHEMA = {}
+    MENU_TREE = {"main_menu": {"1": "Social-Engineering Attacks", "2": "Fast-Track", "3": "Plugins", "4": "Update", "5": "Credits"}}
+    LOG.warning("schema.json not found, using built-in defaults")
 
 def _load_validation() -> dict:
     vpath = BASE_DIR / "validation.json"
     if vpath.exists():
-        return json.loads(vpath.read_text())
+        try:
+            return json.loads(vpath.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            LOG.warning("validation.json is malformed, ignoring")
     return {}
 VAL_SCHEMA = _load_validation()
 
@@ -377,7 +389,7 @@ class InputHistory:
     def load(cls) -> None:
         if INPUT_HIST_PATH.exists():
             try:
-                cls._data = json.loads(INPUT_HIST_PATH.read_text())
+                cls._data = json.loads(INPUT_HIST_PATH.read_text(encoding="utf-8"))
             except Exception:
                 cls._data = {}
 
@@ -385,7 +397,7 @@ class InputHistory:
     def save(cls) -> None:
         INPUT_HIST_PATH.parent.mkdir(parents=True, exist_ok=True)
         try:
-            INPUT_HIST_PATH.write_text(json.dumps(cls._data, indent=2))
+            INPUT_HIST_PATH.write_text(json.dumps(cls._data, indent=2), encoding="utf-8")
         except Exception:
             pass
 
@@ -396,6 +408,8 @@ class InputHistory:
     @classmethod
     def push(cls, key: str, value: str) -> None:
         h = cls._data.setdefault(key, [])
+        if not isinstance(h, list):
+            h = []
         h2 = [x for x in h if x != value]
         h2.insert(0, value)
         cls._data[key] = h2[:CONFIG.get("history_size", 100)]
@@ -494,7 +508,6 @@ class DependencyChecker:
     @staticmethod
     def install_pexpect() -> bool:
         show_info("Installing pexpect...")
-        from pip._internal.cli.main import main as pip_main
         r = subprocess.run([sys.executable, "-m", "pip", "install", "pexpect", "-q"],
                            capture_output=True, text=True, timeout=120)
         if r.returncode == 0:
@@ -504,9 +517,8 @@ class DependencyChecker:
         return False
 
     @staticmethod
-    def check_docker() -> bool:
-        r = subprocess.run(["which", "docker"], capture_output=True, text=True, timeout=10)
-        return r.returncode == 0
+    def check_metasploit() -> bool:
+        return shutil.which("msfconsole") is not None
 
 # ── Auto-Update ───────────────────────────────────────────────────────────────
 class AutoUpdater:
@@ -622,7 +634,23 @@ class AutomateScriptBuilder:
                 self.add(params.get("lhost", ""))
                 self.add(params.get("lport", "443"))
         elif main_choice == "1":
-            pass  # attack_type already sent as attack_choice
+            at = int(sub_choice)
+            if at == 1:
+                self.add(params.get("fileformat", "1"))
+                self.add(params.get("smtp_server", ""))
+                self.add(params.get("from_email", ""))
+                self.add(params.get("to_emails", ""))
+                self.add(params.get("subject", ""))
+                self.add(params.get("body", ""))
+                self.add(params.get("email_list_file", ""))
+                self.add(params.get("lhost", ""))
+                self.add(params.get("lport", "443"))
+            elif at == 2:
+                self.add(params.get("fileformat", "1"))
+                self.add(params.get("lhost", ""))
+                self.add(params.get("lport", "443"))
+            elif at == 3:
+                pass
 
     def build_fasttrack(self, main_choice: str, sub_choice: str, params: dict) -> None:
         self.add("2")
@@ -650,8 +678,12 @@ class AutomateScriptBuilder:
         elif main_choice == "4":
             self.add(params.get("target", ""))
             self.add("")
-        elif main_choice in ("3", "5", "6"):
+        elif main_choice in ("3", "5"):
             self.add(params.get("target", ""))
+        elif main_choice == "6":
+            self.add(params.get("target", ""))
+            self.add(params.get("username", ""))
+            self.add(params.get("password", ""))
 
     def get_preview(self) -> str:
         return "\n".join(self.lines)
@@ -668,9 +700,9 @@ class SETExecutor:
     def _resolve_cmd(self) -> str:
         cmd = self.setoolkit_cmd
         if "/" not in cmd and not cmd.startswith("./"):
-            r = subprocess.run(["which", cmd], capture_output=True, text=True, timeout=10)
-            if r.returncode == 0:
-                cmd = r.stdout.strip()
+            resolved = shutil.which(cmd)
+            if resolved:
+                cmd = resolved
         return cmd
 
     def _run_pexpect_live(self, progress) -> tuple[str, bool]:
@@ -737,7 +769,7 @@ class SETExecutor:
         self._running = True
         try:
             proc = subprocess.Popen(
-                cmd if "/" in cmd else [cmd],
+                [cmd],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -758,16 +790,20 @@ class SETExecutor:
                     proc.stdin.write(line + "\n")
                     proc.stdin.flush()
                     time.sleep(CONFIG.get("pexpect_delay", 0.3))
-                proc.stdin.close()
             except Exception:
                 pass
+            finally:
+                try:
+                    proc.stdin.close()
+                except Exception:
+                    pass
             try:
                 proc.wait(timeout=self.timeout)
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
                 return "".join(stdout_lines) + "\n[red]Command timed out[/]", True
-            t.join(timeout=5)
+            t.join()
         finally:
             self._running = False
             if proc and proc.poll() is None:
@@ -811,7 +847,7 @@ class AttackHistory:
             "platform": Platform.detect(),
         }
         try:
-            with open(str(HISTORY_PATH), "a") as f:
+            with open(str(HISTORY_PATH), "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
         except Exception:
             pass
@@ -823,7 +859,7 @@ class AttackHistory:
             return
         try:
             entries = []
-            with open(str(HISTORY_PATH)) as f:
+            with open(str(HISTORY_PATH), encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line:
@@ -1028,6 +1064,9 @@ class Plugin:
             params[pkey] = val
         script_path = plugin.get("script_path", "")
         if script_path:
+            if not Path(script_path).is_file():
+                show_error("Plugin Error", f"Script not found: {script_path}")
+                return
             r = subprocess.run([sys.executable, script_path] +
                                [f"--{k}={v}" for k, v in params.items()],
                                capture_output=True, text=True, timeout=plugin.get("timeout", 300))
@@ -1074,7 +1113,7 @@ def confirm_and_execute(builder: AutomateScriptBuilder, attack_name: str,
         progress.update(task, visible=False)
 
     show_rule()
-    success = "ERROR" not in output[:20] or not output.startswith("ERROR")
+    success = "ERROR" not in output[:20] and not output.startswith("ERROR")
     if not success:
         show_error("Execution Failed", output)
         LOG.error("SET execution failed:\n%s", output)
@@ -1120,7 +1159,7 @@ def save_report(attack_name: str, output: str, params: dict) -> None:
   <pre>{escape(output[:10000])}</pre>
 </div>
 </body></html>"""
-    rpath.write_text(html)
+    rpath.write_text(html, encoding="utf-8")
     show_success("Report Saved", f"Report: {rpath}")
 
 # ── Main Menu Handler ─────────────────────────────────────────────────────────
@@ -1222,7 +1261,7 @@ def _handle_social_engineering(wizard: "AttackWizard") -> bool:
 
         if params:
             builder = AutomateScriptBuilder()
-            builder.build_social_engineering(sub, params.get("attack_type", params.get("attack_method", params.get("media_type", "1"))), params)
+            builder.build_social_engineering(sub, params.get("attack_type", params.get("attack_method", params.get("media_type", params.get("teensy_type", params.get("ps_type", "1"))))), params)
             confirm_and_execute(builder, sub_label, params)
 
         _safe_input("\n[dim]Press Enter to continue...[/]")
@@ -1275,8 +1314,10 @@ def _handle_presets(wizard: "AttackWizard") -> None:
             show_info(f"Loaded preset for {attack_type}")
     elif action == "2":
         name = prompt_text("Preset name")
-        if name:
-            AttackPreset.save(name, "custom", {"note": "Custom saved preset"})
+        if name and wizard and wizard.params:
+            AttackPreset.save(name, "custom", dict(wizard.params))
+        elif name:
+            AttackPreset.save(name, "custom", {"note": "empty"})
     elif action == "3":
         presets = AttackPreset.list_presets()
         if presets:
@@ -1614,7 +1655,6 @@ class AttackWizard:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main() -> None:
-    _ensure_dirs()
     LOG.info("PocketSET v%s started on %s", VERSION, Platform.detect())
 
     if not Disclaimer.show():
@@ -1657,7 +1697,6 @@ def main() -> None:
                      "MSF-dependent attacks will be disabled.\n"
                      "Install with: apt install metasploit-framework")
 
-    InputHistory.load()
     running = True
 
     while running:
@@ -1707,6 +1746,6 @@ if __name__ == "__main__":
         console.print("\n[yellow]Goodbye! Hack the Gibson...[/]")
         sys.exit(0)
     except Exception as e:
-        _log_error(f"Fatal error: {e}\n{traceback.format_exc()}")
-        show_error("Fatal Error", f"{e}\n\nDetails logged to ~/.pocketset/logs/")
+        LOG.error("Fatal error: %s\n%s", e, traceback.format_exc())
+        show_error("Fatal Error", f"{e}")
         sys.exit(1)

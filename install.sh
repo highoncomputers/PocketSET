@@ -3,12 +3,13 @@
 set -eo pipefail
 
 # ── Auto-clone if running via curl-pipe-bash ──────────────────────────────────
+PKST_DIR="/tmp/PocketSET"
 if [ ! -f "wrapper.py" ]; then
     echo "[*] Cloning PocketSET..."
-    rm -rf /tmp/PocketSET
-    git clone --depth 1 https://github.com/highoncomputers/PocketSET.git /tmp/PocketSET
-    cd /tmp/PocketSET
+    rm -rf "$PKST_DIR"
+    git clone --depth 1 https://github.com/highoncomputers/PocketSET.git "$PKST_DIR"
 fi
+cd "$PKST_DIR"
 
 # Cleanup trap
 TMPFILES=()
@@ -16,10 +17,6 @@ cleanup() {
     for f in "${TMPFILES[@]}"; do rm -rf "$f" 2>/dev/null || true; done
 }
 trap cleanup EXIT
-
-SCRIPT_SRC="${BASH_SOURCE[0]:-$0}"
-SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SRC")" 2>/dev/null && pwd || echo "$PWD")"
-[ -n "$SCRIPT_DIR" ] && cd "$SCRIPT_DIR" 2>/dev/null || true
 
 echo "╔══════════════════════════════════════════════════════╗"
 echo "║         PocketSET v2.0 — Dual-Platform Install       ║"
@@ -58,6 +55,13 @@ case "${PLAT_CHOICE:-$PLATFORM}" in
     3|linux)  PLATFORM="linux";  IS_TERMUX=0; IS_KALI=0 ;;
     *) PLATFORM="$PLATFORM" ;;
 esac
+# Validate user choice matches detected environment
+if [ "$PLATFORM" = "termux" ] && [ -z "$TERMUX_VERSION" ] && ! echo "$HOME" | grep -q "com.termux"; then
+    echo "[!] Warning: Termux selected but not detected as Termux environment."
+    echo "[!] Install will continue but some features may not work correctly."
+elif [ "$PLATFORM" = "kali" ] && ! grep -qi "kali" /etc/os-release 2>/dev/null; then
+    echo "[!] Warning: Kali selected but not detected as Kali Linux."
+fi
 echo "[✓] Installing for: $PLATFORM"
 
 # ── Root / Sudo Detection ────────────────────────────────────────────────────
@@ -92,7 +96,10 @@ install_set_source() {
     TMPDIR=$(mktemp -d)
     TMPFILES+=("$TMPDIR")
     echo "  -> Cloning SET from GitHub..."
-    git clone --depth 1 https://github.com/trustedsec/social-engineer-toolkit.git "$TMPDIR/set"
+    git clone --depth 1 https://github.com/trustedsec/social-engineer-toolkit.git "$TMPDIR/set" || {
+        echo "[!] Git clone failed. Check network connectivity."
+        return 1
+    }
     echo "  -> Installing SET via pip..."
     if (cd "$TMPDIR/set" && python3 -m pip install -e . --break-system-packages 2>/dev/null); then
         echo "[✓] SET installed from source"
@@ -170,9 +177,13 @@ else
     else
         echo "[*] Installing Metasploit Framework via Rapid7 installer..."
         TMPFILES+=("/tmp/msfinstall")
-        curl -fsSL https://raw.githubusercontent.com/rapid7/metasploit-omnibus/master/config/templates/metasploit-framework-wrappers/msfupdate.erb > /tmp/msfinstall
+        curl -fsSL --connect-timeout 15 --max-time 120 \
+            https://raw.githubusercontent.com/rapid7/metasploit-omnibus/master/config/templates/metasploit-framework-wrappers/msfupdate.erb > /tmp/msfinstall || {
+            echo "[!] Failed to download Metasploit installer"
+            return
+        }
         chmod +x /tmp/msfinstall
-        /tmp/msfinstall 2>/dev/null && echo "[✓] Metasploit installed" || \
+        timeout 300 /tmp/msfinstall 2>/dev/null && echo "[✓] Metasploit installed" || \
             echo "[!] Metasploit install failed — MSF-dependent attacks disabled"
     fi
 fi
@@ -193,8 +204,8 @@ echo "[✓] SET located at: ${SETOOLKIT_PATH:-not in PATH}"
 # ── Install Python Dependencies ──────────────────────────────────────────────
 echo "[*] Installing Python dependencies..."
 pip_install() {
-    python3 -m pip install "$@" -q 2>/dev/null && return 0
-    python3 -m pip install "$@" -q --break-system-packages 2>/dev/null && return 0
+    python3 -m pip install "$@" -q 2>&1 | tail -3 && return 0
+    python3 -m pip install "$@" -q --break-system-packages 2>&1 | tail -3 && return 0
     return 1
 }
 DEPS="rich pexpect Pillow qrcode"
@@ -233,8 +244,9 @@ echo "[✓] Platform config written (~/.pocketset/config.json)"
 # ── Copy Files to /opt ────────────────────────────────────────────────────────
 echo "[*] Installing PocketSET to /opt/PocketSET..."
 mkdir -p /opt/PocketSET
-cp -f wrapper.py schema.json validation.json ui.json workflow.json requirements.txt README.md /opt/PocketSET/ 2>/dev/null || true
-cp -f install.sh /opt/PocketSET/ 2>/dev/null || true
+for _f in wrapper.py schema.json validation.json ui.json workflow.json requirements.txt README.md install.sh; do
+    [ -f "$_f" ] && cp -f "$_f" /opt/PocketSET/ 2>/dev/null || true
+done
 chmod +x /opt/PocketSET/wrapper.py
 cp -f ~/.pocketset/config.json /opt/PocketSET/ 2>/dev/null || true
 
