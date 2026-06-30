@@ -21,7 +21,6 @@ try:
     from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
     from rich.syntax import Syntax
     from rich.rule import Rule
-    from rich.align import Align
     from rich.markup import escape
 except ImportError as e:
     print(f"Error: rich is required. Install: pip install rich\n{e}")
@@ -239,10 +238,14 @@ def _ensure_dirs() -> None:
 def _cleanup_temp() -> None:
     if TEMP_DIR.exists():
         for f in TEMP_DIR.iterdir():
-            try: f.unlink()
-            except: pass
-        try: TEMP_DIR.rmdir()
-        except: pass
+            try:
+                f.unlink()
+            except Exception:
+                pass
+        try:
+            TEMP_DIR.rmdir()
+        except Exception:
+            pass
 
 def _safe_input(prompt_str: str = "") -> str:
     try:
@@ -624,8 +627,8 @@ class AutomateScriptBuilder:
         self.lines.append(line if line else "")
 
     def add_many(self, *lines: str) -> None:
-        for l in lines:
-            self.add(l)
+        for line in lines:
+            self.add(line)
 
     def add_blank(self) -> None:
         self.lines.append("")
@@ -795,7 +798,7 @@ class SETExecutor:
                 live_callback(initial)
 
             script_text = self.script_path.read_text()
-            lines = [l for l in script_text.split("\n")]
+            lines = [x for x in script_text.split("\n")]
             total = len(lines)
             for i, line in enumerate(lines):
                 if not self._running:
@@ -1042,11 +1045,13 @@ class SchemaWizard:
                 continue
 
             if custom:
-                validate_fn = lambda v: Validator.validate(
-                    val_type, v,
-                    {"custom": custom, "required": required,
-                     "error_message": error_msg, "pattern": pattern}
-                )
+                def _make_validator(v):  # noqa: E731
+                    return Validator.validate(
+                        val_type, v,
+                        {"custom": custom, "required": required,
+                         "error_message": error_msg, "pattern": pattern}
+                    )
+                validate_fn = _make_validator
             else:
                 validate_fn = None
 
@@ -1317,7 +1322,7 @@ def save_report(attack_name: str, output: str, params: dict) -> None:
     rpath = REPORTS_DIR / f"{safe_name}_{ts}.html"
 
     cleaned = strip_ansi(output)
-    highlights = [l for l in cleaned.split("\n") if l.strip() and is_highlight_line(l.strip())]
+    highlights = [x for x in cleaned.split("\n") if x.strip() and is_highlight_line(x.strip())]
     artifacts = detect_artifacts(output, attack_name)
 
     html = f"""<!DOCTYPE html>
