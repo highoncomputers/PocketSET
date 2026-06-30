@@ -582,10 +582,6 @@ class DependencyChecker:
         show_error("Install Failed", f"Could not install pexpect:\n{r.stderr}")
         return False
 
-    @staticmethod
-    def check_metasploit() -> bool:
-        return shutil.which("msfconsole") is not None
-
 # ── Auto-Update ───────────────────────────────────────────────────────────────
 class AutoUpdater:
     @staticmethod

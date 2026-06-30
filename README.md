@@ -1,7 +1,27 @@
-# PocketSET v2.0
+<div align="center">
+  <h1>PocketSET v2.0</h1>
+  <p><strong>Interactive TUI wrapper for the Social-Engineer Toolkit (SET)</strong></p>
+  <p><em>Dual-Platform: Android (Termux) + Linux (Kali / Debian / Ubuntu)</em></p>
+</div>
 
-**Interactive TUI wrapper for the Social-Engineer Toolkit (SET)**
-**Dual-Platform: Android (Termux) + Linux (Kali / Debian / Ubuntu)**
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="https://github.com/highoncomputers/PocketSET/actions/workflows/ci.yml"><img src="https://github.com/highoncomputers/PocketSET/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue" alt="Python"></a>
+  <a href="https://github.com/highoncomputers/PocketSET/releases"><img src="https://img.shields.io/github/v/release/highoncomputers/PocketSET" alt="Release"></a>
+  <a href="https://github.com/highoncomputers/PocketSET/stargazers"><img src="https://img.shields.io/github/stars/highoncomputers/PocketSET" alt="Stars"></a>
+</p>
+
+<p align="center">
+  <a href="#quick-install-one-command">Install</a> ·
+  <a href="#usage">Usage</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#screenshots">Screenshots</a> ·
+  <a href="#faq">FAQ</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
+
+---
 
 PocketSET provides a beginner-friendly terminal user interface for SET. No flags, no syntax, just guided menus and forms.
 
@@ -67,6 +87,13 @@ pocketset
 | 9 | Attack History (view past runs) |
 | 99 | Exit |
 
+## Screenshots
+
+<!-- Screenshots will be added once a demo environment is available -->
+<p align="center">
+  <i>Demo screenshots and GIFs coming soon. The TUI interface features a rich terminal dashboard with real-time output streaming and highlight detection.</i>
+</p>
+
 ## Features
 
 - **Dual-platform**: Auto-detects Termux (Android) vs Kali vs Other Linux, adjusts paths + deps
@@ -74,7 +101,8 @@ pocketset
 - **Input history**: Frequently entered values (IPs, ports, URLs) remembered across sessions
 - **Attack presets**: Save/load attack configurations as JSON files
 - **Attack history**: Every run logged with timestamp, params, and success status
-- **Live output streaming**: Watch SET execute in real-time
+- **Live output streaming**: Watch SET execute in real-time with syntax-highlighted output
+- **Smart filtering**: Deduplicates repetitive SET output, highlights key events
 - **Pre-flight checks**: Optional ping/port checks before launching attacks
 - **Auto-update**: Checks GitHub for new PocketSET versions on startup
 - **Report generation**: Save attack output as HTML reports
@@ -83,6 +111,7 @@ pocketset
 - **Full input validation**: IP, port, URL, email, CIDR, hostname, file paths
 - **Error handling**: Every error caught, logged, displayed clearly
 - **Process cleanup**: try/finally on all subprocesses + pexpect, no orphans
+- **Pexpect fallback**: Graceful degradation when pexpect is unavailable
 
 ## Presets (Examples)
 
@@ -123,6 +152,37 @@ Drop a `.json` file into `~/.pocketset/plugins/`:
 }
 ```
 
+## Config Reference
+
+`~/.pocketset/config.json` controls behavior:
+```json
+{
+  "platform": "auto",
+  "theme": {
+    "header": "bold cyan",
+    "success": "bold green",
+    "error": "bold red",
+    "warning": "bold yellow",
+    "info": "white",
+    "muted": "dim white"
+  },
+  "pexpect_delay": 0.3,
+  "timeout_seconds": 600,
+  "pre_flight_ping": true,
+  "auto_update": true
+}
+```
+
+## FAQ
+
+| Question | Answer |
+|----------|--------|
+| Does PocketSET work without SET installed? | No. The installer handles SET installation automatically. |
+| Can I use this on Windows? | Not directly. Use WSL with Kali or Ubuntu. |
+| Does it work on non-rooted Android? | Yes, via Termux proot. Some features (wireless) require root. |
+| How do I update? | PocketSET checks for updates on every launch. Or re-run the installer. |
+| Can I contribute translations? | Yes! Open a PR or issue with your language. |
+
 ## Troubleshooting
 
 | Problem | Solution |
@@ -143,4 +203,5 @@ Drop a `.json` file into `~/.pocketset/plugins/`:
 - **PocketSET**: Interactive TUI wrapper for simplified SET usage
 
 ---
-*Hack the Gibson...and remember...hugs are worth more than handshakes.*
+
+*Hack the Gibson...and remember...hugs are worth more than hands. Also read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) before opening issues.*
